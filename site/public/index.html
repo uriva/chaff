@@ -109,6 +109,82 @@
               </p>
             </div>
           </div>
+
+          <details class="more-features">
+            <summary class="more-summary">
+              <span>More under the hood</span>
+              <span class="more-meta">skills, scratchpad, compaction, guards</span>
+            </summary>
+            <div class="more-list">
+              <div class="more-item">
+                <h3>Skills power on and off automatically</h3>
+                <p>
+                  Inactive skills stay out of tool declarations so unused schemas do not inflate every turn. A
+                  lightweight decision router turns on only the skills relevant to the current turn, and idle skills
+                  auto-unlearn once the conversation moves on.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Tool output scratchpad</h3>
+                <p>
+                  Large tool responses spill automatically into a scratchpad instead of clogging active context. The
+                  model receives a short preview plus a <code class="inline-code">SCRATCH:</code> handle it can
+                  paginate with <code class="inline-code">read_scratch_file</code> or pass straight into another
+                  tool's arguments.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Three-tier compaction and history search</h3>
+                <p>
+                  Completed tool arguments and results fold in memory, while settled 30-minute sessions roll up into
+                  structured summaries (entities, decisions, actions, pending, abandoned) without ever splitting a
+                  <code class="inline-code">tool_call</code> from its <code class="inline-code">tool_result</code>.
+                  Older turns stay reachable via <code class="inline-code">search_past_history</code> and
+                  <code class="inline-code">clean_active_memory</code>.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Per-turn thinking-level routing</h3>
+                <p>
+                  Before calling the main model, a fast decision router picks <code class="inline-code">LOW</code>,
+                  <code class="inline-code">MEDIUM</code>, or <code class="inline-code">HIGH</code> thinking depth, so
+                  quick replies and lookups do not pay for deep reasoning.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Zero-cost happy-path guards</h3>
+                <p>
+                  Deterministic checks catch repetition loops, emoji floods, leaked internal thoughts, mangled tool
+                  calls, and truncated replies. Hallucination and unbacked-action audits only fire when triggered,
+                  adding zero tokens on normal turns.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Provider fallback and Gemini thought signatures</h3>
+                <p>
+                  Preserves Gemini <code class="inline-code">thoughtSignature</code> pairing across turns to prevent
+                  thinking-model limit-cycle loops, falls back cleanly to Kimi on false-positive safety blocks, and
+                  recovers gracefully from oversized or corrupted media.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Deferred async tools and external events</h3>
+                <p>
+                  Long-running tools can suspend a turn and resume on a later wakeup. Webhooks and background jobs
+                  enter history as <code class="inline-code">external_event</code> records kept distinct from the
+                  model's own thoughts.
+                </p>
+              </div>
+              <div class="more-item">
+                <h3>Structured JSON and context injection</h3>
+                <p>
+                  Includes Zod-typed <code class="inline-code">genJson</code> helpers and
+                  <code class="inline-code">AsyncLocalStorage</code>-backed dependency injection for API keys,
+                  history stores, caching, and streaming callbacks without threading config objects everywhere.
+                </p>
+              </div>
+            </div>
+          </details>
         </section>
 
         <section class="section" id="benchmarks">
