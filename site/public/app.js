@@ -75,8 +75,14 @@ const snippets = {
 } from "chaff";
 
 const history = [
-  participantUtteranceTurn({ name: "Maya", text: "Grabbing coffee, brb" }),
-  participantUtteranceTurn({ name: "Dan", text: "@bot weather in Tokyo?" }),
+  participantUtteranceTurn({
+    name: "Maya",
+    text: "Grabbing coffee, brb",
+  }),
+  participantUtteranceTurn({
+    name: "Dan",
+    text: "@bot weather in Tokyo?",
+  }),
 ];
 
 const getWeather = tool({
@@ -84,7 +90,11 @@ const getWeather = tool({
   description: "Get current weather for a city",
   parameters: z.object({ city: z.string() }),
   handler: async ({ city }) => ({
-    result: JSON.stringify({ city, tempC: 22, condition: "sunny" }),
+    result: JSON.stringify({
+      city,
+      tempC: 22,
+      condition: "sunny",
+    }),
   }),
 });
 
@@ -94,7 +104,7 @@ await injectGeminiToken(process.env.GEMINI_API_KEY!)(
       history.push(event);
     })(async () => {
       await runAgent({
-        prompt: "You are a concise participant in a group chat.",
+        prompt: "You are a concise group chat participant.",
         tools: [getWeather],
         maxIterations: 5,
         timezoneIANA: "Asia/Jerusalem",
@@ -102,37 +112,45 @@ await injectGeminiToken(process.env.GEMINI_API_KEY!)(
     }),
   ),
 )();`,
-  voice: `import { createDuplexPair, injectGeminiToken, runAgent } from "chaff";
+  voice: `import {
+  createDuplexPair,
+  injectGeminiToken,
+  runAgent,
+} from "chaff";
 
 const [agentSide, callerSide] = createDuplexPair();
 
-await injectGeminiToken(process.env.GEMINI_API_KEY!)(async () => {
-  await runAgent({
-    prompt: "You are a concise voice participant. Speak naturally.",
-    tools: [getOrderStatus, updateDeliveryNote],
-    maxIterations: 10,
-    timezoneIANA: "UTC",
-    transport: {
-      kind: "audio",
-      endpoint: agentSide,
-      voiceName: "Aoede",
-      participantName: "Caller",
-    },
-  });
-})();`,
+await injectGeminiToken(process.env.GEMINI_API_KEY!)(
+  async () => {
+    await runAgent({
+      prompt: "You are a concise voice participant.",
+      tools: [getOrderStatus, updateDeliveryNote],
+      maxIterations: 10,
+      timezoneIANA: "UTC",
+      transport: {
+        kind: "audio",
+        endpoint: agentSide,
+        voiceName: "Aoede",
+        participantName: "Caller",
+      },
+    });
+  },
+)();`,
   json: `import { genJson, injectGeminiToken, z } from "chaff";
 
 const extractContact = genJson(
   { provider: "google", tier: "flash" },
-  "Extract the person's name and timezone from the message.",
+  "Extract the person's name and timezone.",
   z.object({
     name: z.string(),
     timezone: z.string(),
   }),
 );
 
-const result = await injectGeminiToken(process.env.GEMINI_API_KEY!)(
-  () => extractContact("Hey, I'm Maya calling from Tel Aviv."),
+const result = await injectGeminiToken(
+  process.env.GEMINI_API_KEY!,
+)(
+  () => extractContact("Hi, I'm Maya calling from Tel Aviv."),
 )();`,
 };
 
@@ -245,9 +263,43 @@ const playTrace = async () => {
 
 replayBtn.addEventListener("click", () => playTrace());
 
+const escapeHtml = (s) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const highlightTs = (source) => {
+  const tokenRe =
+    /(\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:import|from|const|let|async|await|return|export|type|new)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\()|\b[A-Za-z_$][\w$]*(?=\s*:))/g;
+  let out = "";
+  let lastIndex = 0;
+  for (const match of source.matchAll(tokenRe)) {
+    const idx = match.index ?? 0;
+    out += escapeHtml(source.slice(lastIndex, idx));
+    const tok = match[0];
+    const escaped = escapeHtml(tok);
+    if (tok.startsWith("//")) {
+      out += `<span class="tok-cmt">${escaped}</span>`;
+    } else if (tok.startsWith('"') || tok.startsWith("'")) {
+      out += `<span class="tok-str">${escaped}</span>`;
+    } else if (/^\d/.test(tok)) {
+      out += `<span class="tok-num">${escaped}</span>`;
+    } else if (
+      /^(import|from|const|let|async|await|return|export|type|new)$/.test(tok)
+    ) {
+      out += `<span class="tok-kw">${escaped}</span>`;
+    } else if (source[idx + tok.length] === "(") {
+      out += `<span class="tok-fn">${escaped}</span>`;
+    } else {
+      out += `<span class="tok-key">${escaped}</span>`;
+    }
+    lastIndex = idx + tok.length;
+  }
+  out += escapeHtml(source.slice(lastIndex));
+  return out;
+};
+
 const setSnippet = (name) => {
   snippet = name;
-  codeBlock.textContent = snippets[name];
+  codeBlock.innerHTML = highlightTs(snippets[name]);
 };
 
 document.querySelectorAll(".code-tab").forEach((btn) => {

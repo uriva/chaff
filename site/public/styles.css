@@ -519,6 +519,31 @@ a {
   color: #171717;
 }
 
+.tok-kw {
+  color: #b42318;
+  font-weight: 500;
+}
+
+.tok-str {
+  color: #166534;
+}
+
+.tok-num {
+  color: #0369a1;
+}
+
+.tok-fn {
+  color: #1d4ed8;
+}
+
+.tok-key {
+  color: #525252;
+}
+
+.tok-cmt {
+  color: #a3a3a3;
+}
+
 /* Footer */
 .footer {
   padding-top: 8px;
