@@ -538,6 +538,12 @@ a {
   line-height: 1.55;
 }
 
+.section-note a {
+  color: #0a0a0a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .table-card {
   border: 1px solid #e5e5e5;
   border-radius: 14px;

@@ -33,6 +33,7 @@
           <span>chaff</span>
         </a>
         <nav class="nav">
+          <a href="#evals">Evals</a>
           <a href="#code">Code</a>
           <a href="https://www.npmjs.com/package/@uriv/chaff" target="_blank" rel="noopener noreferrer">npm</a>
           <a href="https://github.com/uriva/chaff" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -184,6 +185,103 @@
               </div>
             </div>
           </details>
+        </section>
+
+        <section class="section" id="evals">
+          <div class="section-head">
+            <h2>Terminal-Bench 4.1 spot-check</h2>
+            <span class="mono muted">gemini-4-hydrogen · k=1</span>
+          </div>
+          <p class="section-note">
+            <code class="inline-code">chaff</code> is built for IM and voice, not coding CLIs. To stress-test long
+            multi-step loops, prompt caching, scratchpad spills, and multimodal tool outputs on a held-constant model,
+            we ran a 7-task <code class="inline-code">k=1</code> spot-check on
+            <a href="https://www.tbench.ai/" target="_blank" rel="noopener noreferrer">Terminal-Bench 4.1</a> via Harbor
+            on Modal using a minimal 5-tool wrapper (<code class="inline-code">bash</code>,
+            <code class="inline-code">read_file</code>, <code class="inline-code">write_file</code>,
+            <code class="inline-code">edit_file</code>, <code class="inline-code">finish</code>) and compared five of
+            them head-to-head against Google's <code class="inline-code">antigravity-cli</code> (the official TB 4.1
+            harness for <code class="inline-code">gemini-4-hydrogen</code>, 56.4% across all 66 tasks at
+            <code class="inline-code">k=5</code>).
+          </p>
+          <p class="section-note">
+            This is a spot-check, not a full 66-task <code class="inline-code">k=5</code> leaderboard run (~$800 in
+            inference). Running real 20&ndash;71-step trajectories caught two harness bugs that are now fixed and
+            shipped: mid-turn tool-arg folding / wall-clock decay busting Gemini's prefix cache (<code class="inline-code">v0.4.2</code>,
+            lifting <code class="inline-code">bun-sourcemap-leak</code> cache hit from 60.4% to 84.7%), and spilled
+            scratchpad previews exceeding the 15k threshold by the notice length and self-compacting on turn +1 (<code class="inline-code">v0.4.3</code>).
+          </p>
+          <div class="table-card">
+            <table class="bench-table">
+              <thead>
+                <tr>
+                  <th>TB 4.1 task</th>
+                  <th>chaff</th>
+                  <th>antigravity-cli</th>
+                  <th>chaff cache</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">photonic-waveguide-routing</td>
+                  <td class="mono"><strong>PASS</strong> <span class="muted">-37,768</span></td>
+                  <td class="mono">PASS <span class="muted">-37,835</span></td>
+                  <td class="mono">82.7%</td>
+                </tr>
+                <tr>
+                  <td class="mono">music-harmony</td>
+                  <td class="mono"><strong>PASS</strong> <span class="muted">8m39s</span></td>
+                  <td class="mono">PASS <span class="muted">9m24s</span></td>
+                  <td class="mono">89.6%</td>
+                </tr>
+                <tr>
+                  <td class="mono">freecad-platform-drawing</td>
+                  <td class="mono"><strong>PASS</strong> <span class="muted">5m15s</span></td>
+                  <td class="mono muted">not run</td>
+                  <td class="mono">90.3%</td>
+                </tr>
+                <tr>
+                  <td class="mono">payments-pipeline-fix</td>
+                  <td class="mono"><strong>PASS</strong> <span class="muted">71 calls</span></td>
+                  <td class="mono muted">not run</td>
+                  <td class="mono">95.6%</td>
+                </tr>
+                <tr>
+                  <td class="mono">html-js-filter</td>
+                  <td class="mono muted">0.0 (27/28 XSS)</td>
+                  <td class="mono muted">0.0 (3/28 XSS)</td>
+                  <td class="mono">92.8%</td>
+                </tr>
+                <tr>
+                  <td class="mono">bun-sourcemap-leak</td>
+                  <td class="mono muted">0.0 (28/37)</td>
+                  <td class="mono muted">0.0 (28/37)</td>
+                  <td class="mono">84.7%</td>
+                </tr>
+                <tr>
+                  <td class="mono">interleaved-vigenere</td>
+                  <td class="mono muted">0.0 (3/6)</td>
+                  <td class="mono muted">0.0 (timeout)</td>
+                  <td class="mono">96.3%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="section-note">
+            <strong>Takeaway:</strong> With a bare 5-tool wrapper, <code class="inline-code">chaff</code> passed 4/7
+            tasks (including multimodal PDF/CAD runs), held 83&ndash;96% prompt cache hit rates with zero mid-turn cache
+            busts up to 237k context, and matched or beat <code class="inline-code">antigravity-cli</code> on the five
+            shared tasks.
+          </p>
+          <p class="link-row">
+            <a
+              href="https://github.com/uriva/chaff/blob/main/scripts/chaff_swe_agent.ts"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Inspect the Harbor runner &#8599;
+            </a>
+          </p>
         </section>
 
         <section class="section" id="code">
