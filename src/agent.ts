@@ -1,5 +1,5 @@
 import { context, type Injection, type Injector } from "@uri/inject";
-import { decodeBase64 } from "@std/encoding/base64";
+import { decodeBase64 } from "./runtime.ts";
 import { getEncoding } from "js-tiktoken";
 import {
   coerce,

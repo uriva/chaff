@@ -1,6 +1,7 @@
 import { context, type Injection, type Injector } from "@uri/inject";
-import { cache } from "rmmbr";
+import { cache } from "./rmmbrClient.ts";
 import { ThinkingLevel } from "@google/genai";
+import { getEnv } from "./runtime.ts";
 import { isCustomCacherInjected, makeCache } from "./cacher.ts";
 import {
   decideCleanupWithDecisionModel,
@@ -34,7 +35,7 @@ export const jevApiUrl = "https://api.typesafe.ai/v1/systemone";
 const rmmbrUrl = "https://rmmbr.net";
 
 const jevToken: Injection<() => string | undefined> = context(
-  (): string | undefined => Deno.env.get("JEV_API_KEY"),
+  (): string | undefined => getEnv("JEV_API_KEY"),
 );
 
 export const accessJevToken = jevToken.access;
@@ -94,7 +95,7 @@ export const jevDecisionCacheId = "jev-decision-v1";
 export const jevThinkingLevelCacheId = "jev-thinking-level-v1";
 
 const getRmmbrJevCacher = () => {
-  const token = Deno.env.get("RMMBR_TOKEN");
+  const token = getEnv("RMMBR_TOKEN");
   return token
     ? cache({
       cacheId: jevThinkingLevelCacheId,
@@ -188,7 +189,7 @@ const inMemoryDecisionCache = new Map<
 >();
 
 const getRmmbrDecisionCacher = () => {
-  const token = Deno.env.get("RMMBR_TOKEN");
+  const token = getEnv("RMMBR_TOKEN");
   return token
     ? cache({
       cacheId: jevDecisionCacheId,

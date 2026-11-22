@@ -45,7 +45,7 @@ import {
 
 export { injectKimiToken };
 
-import { encodeBase64 } from "@std/encoding/base64";
+import { encodeBase64 } from "./runtime.ts";
 const fetchFileAttachment = async (
   attachment: MediaAttachment,
 ): Promise<string | null> => {

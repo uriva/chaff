@@ -2,6 +2,9 @@ deno.lock
 .env
 .worktrees/
 artifacts/
+npm/
+site/dist/
+site/node_modules/
 models.json
 bug.json
 __pycache__/

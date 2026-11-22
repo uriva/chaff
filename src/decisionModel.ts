@@ -2,6 +2,7 @@ import { context, type Injection, type Injector } from "@uri/inject";
 import { empty, nonempty } from "gamla";
 import type { z, ZodType } from "zod/v4";
 import { ThinkingLevel } from "@google/genai";
+import { getEnv } from "./runtime.ts";
 import type {
   HistoryEvent,
   ParticipantUtterance,
@@ -115,7 +116,7 @@ export type DecisionProvider = "gemini" | "jev" | "respan";
 
 const decisionProviderInjection: Injection<() => DecisionProvider | undefined> =
   context((): DecisionProvider | undefined => {
-    const env = Deno.env.get("DECISION_PROVIDER");
+    const env = getEnv("DECISION_PROVIDER");
     if (env === "gemini" || env === "jev" || env === "respan") return env;
     return undefined;
   });

@@ -78,7 +78,8 @@ vs. re-sent per model call, and extra model calls):
 
 # Publishing & Downstream Updates
 
-CI publishes to JSR on push to `main` when the `deno.json` version is bumped.
-Never run `deno publish` locally. To use changes in a consumer repo (e.g.
-`prompt2bot`): bump `version` in `deno.json` here, push to `main`, then bump the
-`@uri/ai-utils` version in the consumer's `deno.json` and run `deno install`.
+CI builds (`deno task build-npm`) and publishes `chaff` to npm on push to `main`
+when the `deno.json` version is bumped (using `NPM_TOKEN`). To use changes in a
+consumer repo (e.g. `prompt2bot`): bump `version` in `deno.json` here, push to
+`main`, then bump `npm:chaff` in the consumer's `deno.json` (or `chaff` in
+`package.json`) and reinstall.

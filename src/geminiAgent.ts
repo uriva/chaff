@@ -10,7 +10,7 @@ import {
   type Part,
   ThinkingLevel,
 } from "@google/genai";
-import { decodeBase64 } from "@std/encoding/base64";
+import { decodeBase64 } from "./runtime.ts";
 import { context, type Injection, type Injector } from "@uri/inject";
 import {
   conditionalRetryExponential,

@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import type { HistoryEvent } from "./agent.ts";
 import type { DuplexMessage } from "./duplex.ts";
 
@@ -72,9 +73,10 @@ export const createAudioArtifactsWriter = (dir: URL) => {
   };
   return async (event: HistoryEvent) => {
     summaries.push(summarize(event));
-    await Deno.writeTextFile(
+    await writeFile(
       new URL("summary.txt", dir),
       summaries.join("\n\n"),
+      "utf8",
     );
     if (event.type !== "own_utterance" || !event.attachments?.length) return;
     const pcm = concatBytes(
@@ -88,7 +90,7 @@ export const createAudioArtifactsWriter = (dir: URL) => {
     const spacedTurns = completedTurns.flatMap((turn, index) =>
       index === completedTurns.length - 1 ? [turn] : [turn, silence24k(350)]
     );
-    await Deno.writeFile(
+    await writeFile(
       new URL("conversation.wav", dir),
       pcmToWav(concatBytes(spacedTurns), 24000),
     );
@@ -136,7 +138,7 @@ export const createTransportAudioRecorder = (dir: URL) => {
     for (let i = 0; i < mixed.length; i++) {
       clamped[i] = Math.max(-32768, Math.min(32767, mixed[i]));
     }
-    await Deno.writeFile(
+    await writeFile(
       new URL("conversation.wav", dir),
       pcmToWav(new Uint8Array(clamped.buffer), targetSampleRate),
     );

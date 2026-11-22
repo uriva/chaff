@@ -19,24 +19,30 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Publish package and verify
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Check if version is already on npm
+        id: check
         run: |
           VERSION=$(jq -r .version deno.json)
-          if curl -sI "https://jsr.io/@uri/ai-utils/${VERSION}_meta.json?cb=$RANDOM" | grep -E "HTTP/.* 200" > /dev/null; then
-            echo "JSR version ${VERSION} is already published and resolvable!"
-            exit 0
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if npm view "chaff@${VERSION}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "chaff@${VERSION} is already published on npm."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
           fi
-          for attempt in 1 2 3 4 5; do
-            echo "Publish attempt ${attempt} for version ${VERSION}..."
-            timeout 180s deno publish || echo "Publish command completed or timed out"
-            for i in {1..18}; do
-              if curl -sI "https://jsr.io/@uri/ai-utils/${VERSION}_meta.json?cb=$RANDOM" | grep -E "HTTP/.* 200" > /dev/null; then
-                echo "Success: JSR version ${VERSION} is resolvable!"
-                exit 0
-              fi
-              echo "Waiting for JSR CDN..."
-              sleep 5
-            done
-          done
-          echo "Error: JSR version ${VERSION} is not resolvable after 5 publish attempts."
-          exit 1
+
+      - name: Build npm package
+        if: steps.check.outputs.published == 'false'
+        run: deno task build-npm
+
+      - name: Publish to npm
+        if: steps.check.outputs.published == 'false'
+        working-directory: npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

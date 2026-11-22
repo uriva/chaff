@@ -1,4 +1,4 @@
-import { encodeBase64 } from "@std/encoding/base64";
+import { encodeBase64 } from "./runtime.ts";
 import { context, type Injection } from "@uri/inject";
 import { z } from "zod/v4";
 import {

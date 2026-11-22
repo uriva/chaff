@@ -1,7 +1,8 @@
 import { context, type Injection, type Injector } from "@uri/inject";
 import { empty } from "gamla";
-import { cache } from "rmmbr";
+import { cache } from "./rmmbrClient.ts";
 import { ThinkingLevel } from "@google/genai";
+import { getEnv } from "./runtime.ts";
 import { isCustomCacherInjected, makeCache } from "./cacher.ts";
 import {
   type ChoiceDecisionAnswer,
@@ -52,7 +53,7 @@ const resolveScoresUrl = (): string => {
 };
 
 const respanToken: Injection<() => string | undefined> = context(
-  (): string | undefined => Deno.env.get("RESPAN_API_KEY"),
+  (): string | undefined => getEnv("RESPAN_API_KEY"),
 );
 
 export const accessRespanToken = respanToken.access;
@@ -664,7 +665,7 @@ export const respanDecisionCacheId = "respan-decision-v1";
 export const respanThinkingLevelCacheId = "respan-thinking-level-v1";
 
 const getRmmbrDecisionCacher = () => {
-  const token = Deno.env.get("RMMBR_TOKEN");
+  const token = getEnv("RMMBR_TOKEN");
   return token
     ? cache({
       cacheId: respanDecisionCacheId,
@@ -691,7 +692,7 @@ export const callRespanDecisionModel = async (
   }
   if (empty(Object.keys(questions))) return {};
 
-  const model = Deno.env.get("RESPAN_MODEL") || defaultRespanModel;
+  const model = getEnv("RESPAN_MODEL") || defaultRespanModel;
   const payload = model.startsWith("span-01")
     ? JSON.stringify({
       model,
@@ -776,7 +777,7 @@ const inMemoryRouteCache = new Map<
 >();
 
 const getRmmbrRouteCacher = () => {
-  const token = Deno.env.get("RMMBR_TOKEN");
+  const token = getEnv("RMMBR_TOKEN");
   return token
     ? cache({
       cacheId: respanThinkingLevelCacheId,
@@ -801,7 +802,7 @@ export const routeThinkingLevelWithRespan = async (
     throw new Error("No Respan token available");
   }
 
-  const model = Deno.env.get("RESPAN_MODEL") || defaultRespanModel;
+  const model = getEnv("RESPAN_MODEL") || defaultRespanModel;
   const payload = model.startsWith("span-01")
     ? JSON.stringify({
       model,

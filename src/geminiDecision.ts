@@ -1,7 +1,8 @@
 import { context, type Injection, type Injector } from "@uri/inject";
 import { conditionalRetry, empty } from "gamla";
-import { cache } from "rmmbr";
+import { cache } from "./rmmbrClient.ts";
 import { ThinkingLevel } from "@google/genai";
+import { getEnv } from "./runtime.ts";
 import { isCustomCacherInjected, makeCache } from "./cacher.ts";
 import {
   type ChoiceDecisionAnswer,
@@ -65,7 +66,7 @@ export const accessGeminiDecisionToken = (): string | undefined => {
   const override = geminiDecisionTokenOverride.access();
   return override !== undefined
     ? override
-    : (accessOptionalGeminiToken() ?? Deno.env.get("GEMINI_API_KEY"));
+    : (accessOptionalGeminiToken() ?? getEnv("GEMINI_API_KEY"));
 };
 
 const requireGeminiDecisionToken = (): string => {
@@ -78,7 +79,7 @@ const requireGeminiDecisionToken = (): string => {
 };
 
 const resolveGeminiDecisionModel = (): string =>
-  Deno.env.get("GEMINI_DECISION_MODEL") || defaultGeminiDecisionModel;
+  getEnv("GEMINI_DECISION_MODEL") || defaultGeminiDecisionModel;
 
 const stateToGeminiInput = (state: unknown): string => {
   if (typeof state === "string") {
@@ -407,7 +408,7 @@ const callCachedWireDecisions = async (
   if (memCached && Date.now() < memCached.expiresAt) {
     return memCached.answers;
   }
-  const rmmbrToken = Deno.env.get("RMMBR_TOKEN");
+  const rmmbrToken = getEnv("RMMBR_TOKEN");
   const rawAnswers = isCustomCacherInjected()
     ? await makeCache(geminiDecisionCacheId, 60 * 60 * 24 * 30)(
       (p: string) => postGeminiDecisions(10000)(token, p),
@@ -523,7 +524,7 @@ export const routeThinkingLevelWithGemini = async (
     return memCached.level;
   }
 
-  const rmmbrToken = Deno.env.get("RMMBR_TOKEN");
+  const rmmbrToken = getEnv("RMMBR_TOKEN");
   const level = isCustomCacherInjected()
     ? await makeCache(geminiThinkingLevelCacheId, 60 * 60 * 24 * 7)(
       (p: string) => rawCallGeminiRoute(token, p),
