@@ -140,3 +140,126 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "runAgent - freshly spilled tool preview stays within threshold and does not self-compact on the immediate next step",
+  async () => {
+    const history: HistoryEvent[] = [
+      {
+        id: "p-1",
+        type: "participant_utterance",
+        isOwn: false,
+        name: "user",
+        text: "Run the solver and inspect the rest of the output.",
+        timestamp: Date.now() - 5_000,
+      },
+    ];
+
+    const scratchStorage = new Map<string, string>();
+    const scratchPad: ToolOutputScratchPad = {
+      get: (id) => Promise.resolve(scratchStorage.get(id)),
+      set: (id, content) => {
+        scratchStorage.set(id, content);
+        return Promise.resolve();
+      },
+    };
+
+    const bigOutput = JSON.stringify({
+      exit_code: 0,
+      output: Array.from(
+        { length: 400 },
+        (_, i) =>
+          `line ${
+            i + 1
+          }: solver iteration metrics and diagnostic details value=${i}`,
+      ).join("\n"),
+    }); // ~28,000 chars JSON (> 15,000 default spill threshold, no raw newlines)
+
+    const runSolverTool: Tool<z.ZodObject<Record<string, never>>> = {
+      name: "run_solver",
+      description: "Run solver",
+      parameters: z.object({}),
+      handler: () => Promise.resolve(bigOutput),
+    };
+
+    const state = { step: 0 };
+    const receivedByStep: HistoryEvent[][] = [];
+
+    await pipe(
+      injectCallModel((received) => {
+        receivedByStep.push(JSON.parse(JSON.stringify(received)));
+        state.step++;
+        if (state.step === 1) {
+          return Promise.resolve([
+            {
+              id: "call-solver-1",
+              type: "tool_call",
+              isOwn: true,
+              name: "run_solver",
+              parameters: {},
+              timestamp: Date.now(),
+            },
+          ]);
+        }
+        if (state.step === 2) {
+          return Promise.resolve([
+            {
+              id: "call-read-scratch",
+              type: "tool_call",
+              isOwn: true,
+              name: "read_scratch_file",
+              parameters: { id: "call-solver-1", startLine: 220, numLines: 50 },
+              timestamp: Date.now(),
+            },
+          ]);
+        }
+        return Promise.resolve([ownUtteranceTurn("Solver output inspected.")]);
+      }),
+      agentDeps(history),
+    )(() =>
+      runAgent({
+        provider: "moonshot",
+        maxIterations: 6,
+        tools: [runSolverTool],
+        prompt: "You are a systems engineer.",
+        toolOutputScratchPad: scratchPad,
+        timezoneIANA: "UTC",
+      })
+    )();
+
+    // On step 2 (immediately after spill), the spilled preview + notice must already fit within 15,000 chars.
+    const step2SolverRes = (receivedByStep[1] ?? []).find(
+      (e): e is Extract<HistoryEvent, { type: "tool_result" }> =>
+        e.type === "tool_result" && e.toolCallId === "call-solver-1",
+    );
+    assertEquals(step2SolverRes !== undefined, true);
+    assertEquals(
+      step2SolverRes!.result.length <= 15_000,
+      true,
+      `Expected freshly spilled preview + notice <= 15,000 chars, got ${
+        step2SolverRes!.result.length
+      }`,
+    );
+
+    // On step 3 (immediately after read_scratch_file), the spilled preview from call-solver-1
+    // must still be intact (not self-compacted into a Memory TLDR on turn +1).
+    const step3History = receivedByStep[2] ?? [];
+    const solverRes = step3History.find(
+      (e): e is Extract<HistoryEvent, { type: "tool_result" }> =>
+        e.type === "tool_result" && e.toolCallId === "call-solver-1",
+    );
+    assertEquals(solverRes !== undefined, true);
+    assertEquals(
+      solverRes!.result.includes("Memory TLDR:"),
+      false,
+      `Expected freshly spilled preview not to self-compact on step 3, got: ${
+        solverRes!.result.slice(0, 250)
+      }`,
+    );
+    assertEquals(
+      solverRes!.result.includes("line 100: solver iteration metrics"),
+      true,
+      "Expected full spilled preview body to remain intact on step 3",
+    );
+  },
+);

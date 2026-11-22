@@ -281,6 +281,25 @@ const sliceFirstChunk = (
   return { preview, previewLines: countLines(preview) };
 };
 
+const formatSpilledToolResult = (
+  prefix: string,
+  toolCallId: string,
+  rawText: string,
+  threshold: number,
+): string => {
+  const totalLines = countLines(rawText);
+  const maxNoticeLen = scratchPadSpillNotice(
+    toolCallId,
+    totalLines,
+    rawText.length,
+    totalLines + 1,
+  ).length;
+  const previewBudget = Math.max(0, threshold - prefix.length - maxNoticeLen);
+  const { preview, previewLines } = sliceFirstChunk(rawText, previewBudget);
+  return prefix + preview +
+    scratchPadSpillNotice(toolCallId, totalLines, rawText.length, previewLines);
+};
+
 const scratchPadReadHeader = (
   id: string,
   totalLines: number,
@@ -1475,16 +1494,9 @@ async <T extends ZodType>(fc: FunctionCall): Promise<
     rawText.length > threshold;
   if (shouldSpill) {
     await scratchPad.set(toolCallId, rawText);
-    const { preview, previewLines } = sliceFirstChunk(rawText, threshold);
     return {
       toolCallId,
-      result: prefix + preview + "\n\n" +
-        scratchPadSpillNotice(
-          toolCallId,
-          countLines(rawText),
-          rawText.length,
-          previewLines,
-        ),
+      result: formatSpilledToolResult(prefix, toolCallId, rawText, threshold),
       attachments,
       ...terminalFlags,
     };
