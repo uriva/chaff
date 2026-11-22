@@ -250,8 +250,7 @@ a {
 
 .demo-body {
   padding: 18px;
-  height: 390px;
-  overflow-y: auto;
+  min-height: 490px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -574,6 +573,6 @@ a {
   }
 
   .demo-body {
-    height: 360px;
+    min-height: 460px;
   }
 }

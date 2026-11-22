@@ -256,9 +256,6 @@ const playTrace = async () => {
     if (wrap) lastBubbleWrap = wrap;
     scrollBottom();
   }
-
-  await wait(5500);
-  if (runId === myRun) playTrace();
 };
 
 replayBtn.addEventListener("click", () => playTrace());
