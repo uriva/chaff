@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -21,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Check if version is already on npm
@@ -40,9 +41,7 @@ jobs:
         if: steps.check.outputs.published == 'false'
         run: deno task build-npm
 
-      - name: Publish to npm
+      - name: Publish to npm via Trusted Publishing (OIDC)
         if: steps.check.outputs.published == 'false'
         working-directory: npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --provenance --access public

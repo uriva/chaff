@@ -1,319 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>chaff, a lean agent harness for real conversations</title>
+    <title>chaff, a minimal agent harness for real conversations</title>
     <meta
       name="description"
-      content="Multi-party, time-aware agent harness for IM and real-time voice. Built for agents that behave like humans digitally. Economical, dynamic, no config knobs."
+      content="Multi-party, time-aware agent harness for IM and real-time voice. Economical, dynamic, and built for agents that behave like humans digitally."
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://chaff.uriv.me" />
+    <meta property="og:site_name" content="chaff" />
     <meta property="og:title" content="chaff" />
     <meta
       property="og:description"
-      content="Multi-party, time-aware agent harness for IM and real-time voice. Cut the context bloat."
+      content="Multi-party, time-aware agent harness for IM and real-time voice. Economical, dynamic, zero knobs."
     />
-    <meta property="og:url" content="https://chaff.uriv.me" />
-    <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="grain" aria-hidden="true"></div>
-
-    <header class="topbar">
-      <div class="container topbar-inner">
+    <div class="page">
+      <header class="wrap header">
         <a href="/" class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span class="brand-name">chaff</span>
-          <span class="brand-version">v0.4</span>
+          <span class="brand-dot" aria-hidden="true"></span>
+          <span>chaff</span>
         </a>
         <nav class="nav">
-          <a href="#how-it-works">How it works</a>
           <a href="#benchmarks">Benchmarks</a>
           <a href="#code">Code</a>
-          <a href="https://www.npmjs.com/package/chaff" target="_blank" rel="noreferrer">npm</a>
-          <a href="https://github.com/uriva/chaff" target="_blank" rel="noreferrer" class="nav-cta">
-            GitHub
-          </a>
+          <a href="https://www.npmjs.com/package/chaff" target="_blank" rel="noopener noreferrer">npm</a>
+          <a href="https://github.com/uriva/chaff" target="_blank" rel="noopener noreferrer">GitHub</a>
         </nav>
-      </div>
-    </header>
+      </header>
 
-    <main>
-      <section class="hero">
-        <div class="container hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow">Open-source TypeScript agent harness</p>
-            <h1>
-              Agents that live in real conversations, <em>without the harness tax.</em>
-            </h1>
-            <p class="lead">
-              Most agent frameworks assume one developer, a local terminal, and a stack of config files.
-              <code>chaff</code> is built for agents that behave like humans digitally: multi-party group threads,
-              real-time voice calls, passage of time, and knowing when to stay quiet.
-            </p>
-            <p class="lead-secondary">
-              Dynamic skill loading, per-turn thinking routing, and three-tier compaction happen automatically,
-              cutting output tokens by up to 89% on the exact same model with no knobs to tune.
-            </p>
-
-            <div class="install-row">
-              <button class="install-box" id="copy-install" type="button" aria-label="Copy npm install chaff">
-                <span class="install-prompt">$</span>
-                <code>npm install chaff</code>
-                <span class="install-status" id="install-status">copy</span>
-              </button>
-              <a
-                class="btn-secondary"
-                href="https://github.com/uriva/chaff"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Read the source
-              </a>
-            </div>
-
-            <div class="runtime-strip">
-              <span>Node 20+</span>
-              <span class="dot"></span>
-              <span>Bun</span>
-              <span class="dot"></span>
-              <span>Deno</span>
-              <span class="dot"></span>
-              <span>Cloudflare Workers</span>
-              <span class="dot"></span>
-              <span>Gemini / Claude / Kimi</span>
-            </div>
-          </div>
-
-          <div class="hero-stage">
-            <div class="stage-frame">
-              <div class="stage-header">
-                <div class="stage-tabs" role="tablist" aria-label="Harness transport mode">
-                  <button
-                    class="stage-tab is-active"
-                    role="tab"
-                    aria-selected="true"
-                    data-mode="im"
-                    type="button"
-                  >
-                    Group IM
-                  </button>
-                  <button
-                    class="stage-tab"
-                    role="tab"
-                    aria-selected="false"
-                    data-mode="voice"
-                    type="button"
-                  >
-                    Live Voice
-                  </button>
-                </div>
-                <div class="stage-meta" id="stage-meta">Asia/Jerusalem · 3 speakers</div>
-              </div>
-
-              <div class="stage-timeline" id="stage-timeline"></div>
-
-              <div class="stage-footer">
-                <div class="stage-telemetry" id="stage-telemetry"></div>
-                <button class="stage-replay" id="stage-replay" type="button">Replay trace</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="thesis-band">
-        <div class="container thesis-inner">
-          <div class="thesis-label">The premise</div>
-          <p class="thesis-text">
-            A harness is not neutral plumbing. It shapes the tool schemas, formats the history, decides what stays in
-            context, and determines whether your prompt cache hits 55% or 0%. You do not need to wait for the next
-            frontier model to cut your token bill in half.
+      <main class="wrap main">
+        <section class="hero">
+          <h1>Agents that behave like humans in IM and voice.</h1>
+          <p class="sub">
+            A multi-party, time-aware TypeScript harness. Economical and dynamic out of the box, with no knobs to
+            configure.
           </p>
-        </div>
-      </section>
+          <div class="actions">
+            <button type="button" id="copy-install" class="pill-primary" aria-label="Copy npm install chaff">
+              <code class="mono">npm install chaff</code>
+              <span class="pill-status" id="install-status">copy</span>
+            </button>
+            <a
+              href="https://github.com/uriva/chaff"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="pill-secondary"
+            >
+              <span>GitHub</span>
+              <span aria-hidden="true">&#8599;</span>
+            </a>
+          </div>
+        </section>
 
-      <section class="features" id="how-it-works">
-        <div class="container">
+        <section class="demo-card" aria-label="Live harness trace">
+          <div class="demo-head">
+            <div class="demo-tabs" role="tablist" aria-label="Transport mode">
+              <button type="button" class="demo-tab is-active" role="tab" aria-selected="true" data-mode="im">
+                Group IM
+              </button>
+              <button type="button" class="demo-tab" role="tab" aria-selected="false" data-mode="voice">
+                Live Voice
+              </button>
+            </div>
+            <button type="button" id="demo-replay" class="replay-btn" aria-label="Replay conversation">
+              &#8634; Replay
+            </button>
+          </div>
+          <div class="demo-body" id="demo-body"></div>
+        </section>
+
+        <section class="section">
+          <div class="list">
+            <div class="list-item">
+              <h2>Multi-party, not user/assistant</h2>
+              <p>
+                Real chats have multiple speakers, edits, reactions, and async webhooks. When two people are talking to
+                each other, the agent emits <code class="inline-code">do_nothing</code> and stays quiet instead of
+                replying to every line.
+              </p>
+            </div>
+            <div class="list-item">
+              <h2>Time-aware</h2>
+              <p>
+                Every turn carries timestamps and an IANA timezone. Threads segment naturally on 30-minute gaps, idle
+                skills unlearn themselves once the topic moves on, and turns obey wall-clock budgets.
+              </p>
+            </div>
+            <div class="list-item">
+              <h2>IM and real-time voice on one loop</h2>
+              <p>
+                The same <code class="inline-code">AgentSpec</code>, tools, and event history drive Gemini, Claude, and
+                Kimi over messaging, or full-duplex Gemini Live audio with barge-in handling.
+              </p>
+            </div>
+            <div class="list-item">
+              <h2>Economical and dynamic, without knobs</h2>
+              <p>
+                On-demand skill loading, per-turn thinking-level routing, three-tier compaction with scratchpad spills,
+                and deterministic happy-path guards run automatically. No manual tuning, no bloated startup prompt.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="benchmarks">
           <div class="section-head">
-            <p class="eyebrow">Architecture</p>
-            <h2>Built for how people actually communicate</h2>
+            <h2>Same model, less chaff</h2>
+            <span class="mono muted">gemini-3.8-flash</span>
           </div>
-
-          <div class="feature-grid">
-            <article class="feature-card feature-wide">
-              <div class="feature-num">01</div>
-              <div class="feature-body">
-                <h3>Multi-party first, not user/assistant ping-pong</h3>
-                <p>
-                  Real messaging is not an alternating two-role array. <code>chaff</code> tracks named
-                  <code>participant_utterance</code> turns, message edits, emoji reactions, and out-of-band
-                  <code>external_event</code> webhooks separately from the model's own thoughts. When two humans are
-                  talking to each other in a group chat, the agent emits <code>do_nothing</code> and stays silent
-                  instead of chiming in on every message.
-                </p>
-                <div class="tag-row">
-                  <span>participant_utterance</span>
-                  <span>do_nothing</span>
-                  <span>external_event</span>
-                  <span>edits &amp; reactions</span>
-                </div>
-              </div>
-            </article>
-
-            <article class="feature-card">
-              <div class="feature-num">02</div>
-              <div class="feature-body">
-                <h3>Time is part of the state</h3>
-                <p>
-                  Every turn carries timestamps and an IANA timezone. Long threads segment naturally on 30-minute
-                  conversation gaps, idle skills unlearn themselves once the topic moves on, and each turn respects a
-                  wall-clock execution budget alongside iteration caps.
-                </p>
-                <div class="tag-row">
-                  <span>timezoneIANA</span>
-                  <span>gap segmentation</span>
-                  <span>turn time budgets</span>
-                </div>
-              </div>
-            </article>
-
-            <article class="feature-card">
-              <div class="feature-num">03</div>
-              <div class="feature-body">
-                <h3>One harness for IM and real-time voice</h3>
-                <p>
-                  Pass the same <code>AgentSpec</code>, tools, skills, and event log to text channels (Gemini,
-                  Anthropic, Kimi with automatic safety-block fallback) or switch to
-                  <code>transport: &#123; kind: "audio" &#125;</code> for full-duplex Gemini Live calls with
-                  barge-in interruption handling.
-                </p>
-                <div class="tag-row">
-                  <span>Gemini / Claude / Kimi</span>
-                  <span>Gemini Live duplex</span>
-                  <span>barge-in flush</span>
-                </div>
-              </div>
-            </article>
-
-            <article class="feature-card feature-wide">
-              <div class="feature-num">04</div>
-              <div class="feature-body">
-                <h3>Economical and dynamic, with no knobs to babysit</h3>
-                <p>
-                  Instead of asking you to hand-wire static tool subsets, reasoning budgets, and summary schedules,
-                  <code>chaff</code> adapts per turn. A lightweight decision model activates only the skills needed now
-                  and picks thinking depth (<code>LOW</code>, <code>MEDIUM</code>, <code>HIGH</code>). Large tool
-                  outputs spill to a scratchpad, settled sessions compact into structured summaries, and deterministic
-                  guards catch repetition floods, truncation, and unbacked claims at zero happy-path token cost.
-                </p>
-                <div class="tag-row">
-                  <span>on-demand skills</span>
-                  <span>thinking-level routing</span>
-                  <span>3-tier compaction</span>
-                  <span>zero happy-path tax</span>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="benchmarks" id="benchmarks">
-        <div class="container">
-          <div class="section-head bench-head">
-            <div>
-              <p class="eyebrow">Same-model benchmarks</p>
-              <h2>Holding the model constant (<code>gemini-3.8-flash</code>)</h2>
-            </div>
-            <p class="bench-sub">
-              Identical repositories, identical tasks, identical model. Every task passed on both sides. The only
-              variable was the harness.
-            </p>
-          </div>
-
-          <div class="bench-cards">
-            <div class="bench-card">
-              <div class="bench-kicker">ClawBench · t2-config-loader</div>
-              <div class="bench-big">-89.2%</div>
-              <div class="bench-label">fewer output tokens vs. Pi</div>
-              <div class="bar-group">
-                <div class="bar-row">
-                  <span class="bar-name">chaff</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-chaff" style="--w: 10.8%"></div>
-                  </div>
-                  <span class="bar-val">944</span>
-                </div>
-                <div class="bar-row">
-                  <span class="bar-name">Pi</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-base" style="--w: 100%"></div>
-                  </div>
-                  <span class="bar-val">8,711</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="bench-card">
-              <div class="bench-kicker">Turn-1 startup overhead</div>
-              <div class="bench-big">~800</div>
-              <div class="bench-label">initial tokens vs. 4,239 for Pi</div>
-              <div class="bar-group">
-                <div class="bar-row">
-                  <span class="bar-name">chaff</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-chaff" style="--w: 18.9%"></div>
-                  </div>
-                  <span class="bar-val">~800</span>
-                </div>
-                <div class="bar-row">
-                  <span class="bar-name">Pi</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-base" style="--w: 100%"></div>
-                  </div>
-                  <span class="bar-val">4,239</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="bench-card">
-              <div class="bench-kicker">&tau;-bench Retail · 5/5 passed</div>
-              <div class="bench-big">55.2%</div>
-              <div class="bench-label">prompt cache hit rate vs. 0%</div>
-              <div class="bar-group">
-                <div class="bar-row">
-                  <span class="bar-name">chaff</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-chaff" style="--w: 55.2%"></div>
-                  </div>
-                  <span class="bar-val">55.2%</span>
-                </div>
-                <div class="bar-row">
-                  <span class="bar-name">LLMAgent</span>
-                  <div class="bar-track">
-                    <div class="bar-fill bar-base" style="--w: 2%"></div>
-                  </div>
-                  <span class="bar-val">0%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="table-wrap">
+          <p class="section-note">
+            Head-to-head on identical tasks where both harnesses passed. Holding the model constant isolates the
+            harness tax.
+          </p>
+          <div class="table-card">
             <table class="bench-table">
               <thead>
                 <tr>
                   <th>Benchmark</th>
-                  <th>Metric</th>
                   <th>chaff</th>
                   <th>Baseline</th>
                   <th>Delta</th>
@@ -321,101 +136,73 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>ClawBench <code>t2-config-loader</code> vs. Pi</td>
-                  <td>Output tokens</td>
-                  <td><strong>944</strong></td>
-                  <td>8,711</td>
-                  <td class="delta-good">-89.2%</td>
+                  <td>ClawBench <span class="muted">output tok vs. Pi</span></td>
+                  <td class="mono"><strong>944</strong></td>
+                  <td class="mono muted">8,711</td>
+                  <td class="mono">-89.2%</td>
                 </tr>
                 <tr>
-                  <td>ClawBench <code>t2-config-loader</code> vs. Pi</td>
-                  <td>Total tokens</td>
-                  <td><strong>120,857</strong></td>
-                  <td>248,755</td>
-                  <td class="delta-good">-51.4%</td>
+                  <td>ClawBench <span class="muted">total tok vs. Pi</span></td>
+                  <td class="mono"><strong>120.9k</strong></td>
+                  <td class="mono muted">248.8k</td>
+                  <td class="mono">-51.4%</td>
                 </tr>
                 <tr>
-                  <td>ClawBench <code>t2-config-loader</code> vs. Pi</td>
-                  <td>LLM calls</td>
-                  <td><strong>16</strong></td>
-                  <td>36</td>
-                  <td class="delta-good">-55.5%</td>
+                  <td>Turn-1 startup <span class="muted">vs. Pi</span></td>
+                  <td class="mono"><strong>~800</strong></td>
+                  <td class="mono muted">4,239</td>
+                  <td class="mono">-81.1%</td>
                 </tr>
                 <tr>
-                  <td>ClawBench <code>t1-bugfix-discount</code> vs. Pi</td>
-                  <td>Output tokens</td>
-                  <td><strong>1,239</strong></td>
-                  <td>7,600</td>
-                  <td class="delta-good">-83.7%</td>
+                  <td>&tau;-bench Retail <span class="muted">output tok vs. LLMAgent</span></td>
+                  <td class="mono"><strong>1,137</strong></td>
+                  <td class="mono muted">3,406</td>
+                  <td class="mono">-66.6%</td>
                 </tr>
                 <tr>
-                  <td>&tau;-bench Retail (5/5) vs. reference <code>LLMAgent</code></td>
-                  <td>Output tokens</td>
-                  <td><strong>1,137</strong></td>
-                  <td>3,406</td>
-                  <td class="delta-good">-66.6%</td>
-                </tr>
-                <tr>
-                  <td>&tau;-bench Retail (5/5) vs. reference <code>LLMAgent</code></td>
-                  <td>Total API cost</td>
-                  <td><strong>-22.1%</strong></td>
-                  <td>1.0x</td>
-                  <td class="delta-good">55.2% cache hit</td>
+                  <td>&tau;-bench Retail <span class="muted">prompt cache hit</span></td>
+                  <td class="mono"><strong>55.2%</strong></td>
+                  <td class="mono muted">0%</td>
+                  <td class="mono">+55.2pp</td>
                 </tr>
               </tbody>
             </table>
           </div>
-
-          <p class="bench-footnote">
-            Deterministic history prefixes keep provider caches warm across multi-turn sessions, and preserving
-            <code>thoughtSignature</code> + <code>tool_call</code> turn pairing eliminates the infinite limit-cycle
-            loops Gemini thinking models otherwise hit.
+          <p class="link-row">
             <a
               href="https://prompt2bot.com/blog/the-harness-tax-benchmarking-agents-on-the-same-model"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
-              Read the full benchmark writeup &rarr;
+              Read the benchmark writeup &#8599;
             </a>
           </p>
-        </div>
-      </section>
+        </section>
 
-      <section class="code-section" id="code">
-        <div class="container">
-          <div class="section-head">
-            <p class="eyebrow">API surface</p>
-            <h2>Typed, composable, no framework lock-in</h2>
-          </div>
-
-          <div class="code-shell">
-            <div class="code-bar">
-              <div class="code-tabs" role="tablist" aria-label="Code examples">
-                <button class="code-tab is-active" data-snippet="im" type="button">Multi-party IM</button>
-                <button class="code-tab" data-snippet="voice" type="button">Real-time voice</button>
-                <button class="code-tab" data-snippet="json" type="button">Structured JSON</button>
+        <section class="section" id="code">
+          <div class="code-card">
+            <div class="code-head">
+              <div class="demo-tabs" role="tablist" aria-label="Code examples">
+                <button type="button" class="code-tab is-active" data-snippet="im">IM</button>
+                <button type="button" class="code-tab" data-snippet="voice">Voice</button>
+                <button type="button" class="code-tab" data-snippet="json">JSON</button>
               </div>
-              <button class="code-copy" id="copy-snippet" type="button">Copy</button>
+              <button type="button" id="copy-snippet" class="replay-btn">Copy</button>
             </div>
             <pre class="code-pre"><code id="code-block"></code></pre>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
 
-    <footer class="footer">
-      <div class="container footer-inner">
-        <div class="footer-left">
-          <span class="brand-name">chaff</span>
-          <span class="footer-note">MIT licensed. Runs in production behind prompt2bot.</span>
-        </div>
-        <div class="footer-links">
-          <a href="https://github.com/uriva/chaff" target="_blank" rel="noreferrer">GitHub</a>
-          <a href="https://www.npmjs.com/package/chaff" target="_blank" rel="noreferrer">npm</a>
-          <a href="https://github.com/uriva/chaff/tree/main/site" target="_blank" rel="noreferrer">Page source</a>
-        </div>
-      </div>
-    </footer>
+      <footer class="wrap footer">
+        <span>Node 20+ · Bun · Deno · Cloudflare Workers · MIT</span>
+        <span class="footer-links">
+          <a href="https://github.com/uriva/chaff" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://www.npmjs.com/package/chaff" target="_blank" rel="noopener noreferrer">npm</a>
+          <a href="https://github.com/uriva/chaff/tree/main/site" target="_blank" rel="noopener noreferrer">Source</a>
+        </span>
+      </footer>
+    </div>
 
     <script type="module" src="/app.js"></script>
   </body>

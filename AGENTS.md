@@ -78,8 +78,8 @@ vs. re-sent per model call, and extra model calls):
 
 # Publishing & Downstream Updates
 
-CI builds (`deno task build-npm`) and publishes `chaff` to npm on push to `main`
-when the `deno.json` version is bumped (using `NPM_TOKEN`). To use changes in a
-consumer repo (e.g. `prompt2bot`): bump `version` in `deno.json` here, push to
-`main`, then bump `npm:chaff` in the consumer's `deno.json` (or `chaff` in
-`package.json`) and reinstall.
+CI builds (`deno task build-npm`) and publishes `chaff` to npm via Trusted
+Publishing (OIDC, `publish.yml`) on push to `main` when the `deno.json` version
+is bumped. To use changes in a consumer repo (e.g. `prompt2bot`): bump `version`
+in `deno.json` here, push to `main`, then bump `npm:chaff` in the consumer's
+`deno.json` (or `chaff` in `package.json`) and reinstall.
