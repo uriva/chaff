@@ -2709,6 +2709,7 @@ export type ProjectHistoryOptions = {
     toolCall: HistoryEvent & { type: "tool_call" },
     resultText: string,
   ) => Promise<string>;
+  activeTurnStartedAt?: number;
 };
 
 export const projectHistoryToModelContext = async ({
@@ -2720,6 +2721,7 @@ export const projectHistoryToModelContext = async ({
   scratchPad,
   deferredToolNames,
   generateTLDR,
+  activeTurnStartedAt,
 }: ProjectHistoryOptions): Promise<HistoryEvent[]> => {
   const sanitized = sanitizeWindowBoundary(rawHistory);
   if (empty(sanitized)) return [];
@@ -2744,6 +2746,7 @@ export const projectHistoryToModelContext = async ({
       {
         setScratch: scratchPad.set,
         generateTLDR,
+        activeTurnStartedAt,
       },
     );
   }
@@ -3817,6 +3820,7 @@ const projectModelContext = (
   spec: AgentSpec,
   events: HistoryEvent[],
   scratchPad: ToolOutputScratchPad | undefined,
+  activeTurnStartedAt?: number,
 ): Promise<HistoryEvent[]> =>
   projectHistoryToModelContext({
     rawHistory: events,
@@ -3827,6 +3831,7 @@ const projectModelContext = (
     deferredToolNames: spec.deferredToolNames
       ? new Set(spec.deferredToolNames)
       : undefined,
+    activeTurnStartedAt,
   });
 
 type ProgressGateState = {
@@ -4131,6 +4136,7 @@ export const runAbstractAgent = (
         spec,
         [...history, ...ephemeralHistory],
         scratchPad,
+        progressState.turnStartedAt,
       );
 
       const progress = await maybeRunProgressCheck(
@@ -4156,6 +4162,7 @@ export const runAbstractAgent = (
           spec,
           [...history, ...ephemeralHistory],
           scratchPad,
+          progressState.turnStartedAt,
         );
       }
 

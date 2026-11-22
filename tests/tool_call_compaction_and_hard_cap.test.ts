@@ -2,11 +2,13 @@ import { assert, assertEquals } from "@std/assert";
 import { pipe } from "gamla";
 import { z } from "zod/v4";
 import {
+  compactToolResultsInMemory,
   type HistoryEvent,
   injectCallModel,
   injectCallModelWrapper,
   ownUtteranceTurn,
   participantUtteranceTurn,
+  projectHistoryToModelContext,
   runAgent,
   type Skill,
   tool,
@@ -347,5 +349,178 @@ Deno.test(
       4,
       `Expected force-stop after wrap-up attempt at hardMaxIterations=4, got ${state.calls} calls`,
     );
+  },
+);
+
+Deno.test(
+  "mid-sized completed tool_call args stay immutable within the same turn to preserve prompt cache, then compact after 3 completed turns",
+  async () => {
+    const now = Date.now();
+    const scratchStorage = new Map<string, string>();
+    const scratchPad: ToolOutputScratchPad = {
+      get: (id) => Promise.resolve(scratchStorage.get(id)),
+      set: (id, content) => {
+        scratchStorage.set(id, content);
+        return Promise.resolve();
+      },
+    };
+    const midSizedContent = "export const value = 42;\n".repeat(160); // ~4,000 chars (< 15k maxThreshold, > 1.5k minThreshold)
+    const activeTurnHistory: HistoryEvent[] = [
+      {
+        id: "u-start",
+        type: "participant_utterance",
+        isOwn: false,
+        name: "user",
+        text: "Edit the file and verify with a few checks.",
+        timestamp: now - 30_000,
+      },
+      {
+        id: "write-mid-1",
+        type: "tool_call",
+        isOwn: true,
+        name: "write_file",
+        parameters: { path: "src/app.ts", content: midSizedContent },
+        timestamp: now - 25_000,
+      },
+      {
+        id: "write-mid-1-res",
+        type: "tool_result",
+        isOwn: true,
+        toolCallId: "write-mid-1",
+        result: "Wrote src/app.ts",
+        timestamp: now - 24_000,
+      },
+      ...[1, 2, 3, 4].flatMap((n): HistoryEvent[] => [
+        {
+          id: `check-${n}`,
+          type: "tool_call",
+          isOwn: true,
+          name: "run_check",
+          parameters: { step: n },
+          timestamp: now - 20_000 + n * 2_000,
+        },
+        {
+          id: `check-${n}-res`,
+          type: "tool_result",
+          isOwn: true,
+          toolCallId: `check-${n}`,
+          result: `Check ${n} passed`,
+          timestamp: now - 19_000 + n * 2_000,
+        },
+      ]),
+    ];
+
+    const projectedSameTurn = await projectHistoryToModelContext({
+      rawHistory: activeTurnHistory,
+      scratchPad,
+    });
+    const sameTurnCall = projectedSameTurn.find(
+      (e): e is Extract<HistoryEvent, { type: "tool_call" }> =>
+        e.type === "tool_call" && e.id === "write-mid-1",
+    );
+    assert(sameTurnCall, "Expected write-mid-1 to remain in projected history");
+    assertEquals(
+      sameTurnCall.parameters,
+      { path: "src/app.ts", content: midSizedContent },
+      "Mid-sized tool_call args must not mutate mid-turn after 3+ tool steps (would bust prompt cache)",
+    );
+
+    const historyAfterThreeTurns: HistoryEvent[] = [
+      ...activeTurnHistory,
+      ...[1, 2, 3].flatMap((n): HistoryEvent[] => [
+        {
+          id: `reply-${n}`,
+          type: "own_utterance",
+          isOwn: true,
+          text: `Done step ${n}.`,
+          timestamp: now - 5_000 + n * 1_000,
+        },
+        {
+          id: `followup-${n}`,
+          type: "participant_utterance",
+          isOwn: false,
+          name: "user",
+          text: `Thanks ${n}`,
+          timestamp: now - 4_500 + n * 1_000,
+        },
+      ]),
+    ];
+
+    const projectedLater = await projectHistoryToModelContext({
+      rawHistory: historyAfterThreeTurns,
+      scratchPad,
+    });
+    const laterCall = projectedLater.find(
+      (e): e is Extract<HistoryEvent, { type: "tool_call" }> =>
+        e.type === "tool_call" && e.id === "write-mid-1",
+    );
+    assert(laterCall, "Expected write-mid-1 to remain in later history");
+    assert(
+      JSON.stringify(laterCall.parameters).length < 1_500,
+      "Expected mid-sized tool_call args to compact after 3 completed conversational turns",
+    );
+  },
+);
+
+Deno.test(
+  "compactToolResultsInMemory skips wall-clock decay for events created during the active turn",
+  async () => {
+    const now = Date.now();
+    const tenMinutesAgo = now - 10 * 60 * 1000;
+    const scratchStorage = new Map<string, string>();
+    const setScratch = (id: string, content: string): Promise<void> => {
+      scratchStorage.set(id, content);
+      return Promise.resolve();
+    };
+    const body = "a".repeat(8_000);
+    const events: HistoryEvent[] = [
+      {
+        id: "call-long-turn",
+        type: "tool_call",
+        isOwn: true,
+        name: "write_file",
+        parameters: { path: "src/long.ts", content: body },
+        timestamp: tenMinutesAgo + 1_000,
+      },
+      {
+        id: "res-long-turn",
+        type: "tool_result",
+        isOwn: true,
+        toolCallId: "call-long-turn",
+        result: body,
+        timestamp: tenMinutesAgo + 2_000,
+      },
+      {
+        id: "call-next",
+        type: "tool_call",
+        isOwn: true,
+        name: "bash",
+        parameters: { command: "echo ok" },
+        timestamp: now - 1_000,
+      },
+      {
+        id: "res-next",
+        type: "tool_result",
+        isOwn: true,
+        toolCallId: "call-next",
+        result: "ok",
+        timestamp: now - 500,
+      },
+    ];
+
+    const compacted = await compactToolResultsInMemory(events, {
+      setScratch,
+      activeTurnStartedAt: tenMinutesAgo,
+    });
+    const callEvent = compacted.find(
+      (e): e is Extract<HistoryEvent, { type: "tool_call" }> =>
+        e.type === "tool_call" && e.id === "call-long-turn",
+    );
+    const resEvent = compacted.find(
+      (e): e is Extract<HistoryEvent, { type: "tool_result" }> =>
+        e.type === "tool_result" && e.id === "res-long-turn",
+    );
+    assertEquals(callEvent?.parameters, { path: "src/long.ts", content: body });
+    assertEquals(resEvent?.result, body);
   },
 );

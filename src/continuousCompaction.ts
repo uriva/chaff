@@ -90,6 +90,7 @@ export type CompactionOptions = {
     toolCall: HistoryEvent & { type: "tool_call" },
     resultText: string,
   ) => Promise<string>;
+  activeTurnStartedAt?: number;
 };
 
 const maxSpilledIdsPerScratch = 2000;
@@ -245,9 +246,20 @@ const compactParameterRecord = (
     ]),
   );
 
+const thresholdForEvent = (
+  timestamp: number,
+  turnDistance: number,
+  activeTurnStartedAt?: number,
+): number =>
+  activeTurnStartedAt !== undefined &&
+    timestamp >= activeTurnStartedAt &&
+    turnDistance < 3
+    ? maxThreshold
+    : getSpillThreshold(timestamp, turnDistance);
+
 export const compactToolResultsInMemory = async (
   events: HistoryEvent[],
-  { setScratch, generateTLDR }: CompactionOptions,
+  { setScratch, generateTLDR, activeTurnStartedAt }: CompactionOptions,
 ): Promise<HistoryEvent[]> => {
   const pairs = groupToolCallPairs(events).filter(isNonLifecycleToolPair);
   const resultCandidates: {
@@ -286,9 +298,10 @@ export const compactToolResultsInMemory = async (
       const turnDistance = isSpillNotice(toolResult.result)
         ? toolStepDistance
         : completedTurnsAfter;
-      const threshold = getSpillThreshold(
+      const threshold = thresholdForEvent(
         toolResult.timestamp,
         turnDistance,
+        activeTurnStartedAt,
       );
       const { command } = toolCallCommandAndParams(toolCall);
 
@@ -309,9 +322,10 @@ export const compactToolResultsInMemory = async (
         isObject(toolCall.parameters)
       ) {
         const serializedArgs = JSON.stringify(toolCall.parameters);
-        const argsThreshold = getSpillThreshold(
+        const argsThreshold = thresholdForEvent(
           toolCall.timestamp,
-          Math.max(toolStepDistance, completedTurnsAfter),
+          completedTurnsAfter,
+          activeTurnStartedAt,
         );
         if (
           serializedArgs.length > argsThreshold &&
