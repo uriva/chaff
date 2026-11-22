@@ -1,98 +1,67 @@
-const scripts = {
-  im: [
-    {
-      kind: "human",
-      speaker: "Maya",
-      time: "09:14",
-      text: "Running 10 mins late, grabbing coffee on the way.",
-      delayMs: 300,
-    },
-    {
-      kind: "human",
-      speaker: "Dan",
-      time: "09:15",
-      text: "No rush, grab me an iced americano if you can.",
-      delayMs: 1100,
-    },
-    {
-      kind: "meta",
-      text: "do_nothing · stayed silent",
-      delayMs: 750,
-    },
-    {
-      kind: "meta",
-      text: "34 min gap · prior segment compacted",
-      delayMs: 1100,
-    },
-    {
-      kind: "human",
-      speaker: "Dan",
-      time: "09:49",
-      text: "@bot check if Thursday 14:00 works for both of us and send the invite.",
-      delayMs: 1200,
-    },
-    {
-      kind: "meta",
-      text: "thinking=HIGH · loaded skill: calendar (1/14)",
-      delayMs: 700,
-    },
-    {
-      kind: "agent",
-      speaker: "chaff",
-      time: "09:49",
-      text: "Maya has a conflict until 14:30. Moved it to 14:30 and sent invites.",
-      delayMs: 450,
-      typingMs: 850,
-    },
-  ],
-  voice: [
-    {
-      kind: "human",
-      speaker: "Caller",
-      time: "14:02:04",
-      text: "Hey, can you check my order from last Tuesday and tell me if it shipped?",
-      delayMs: 300,
-    },
-    {
-      kind: "meta",
-      text: "tool_call orders/get_status · silent",
-      delayMs: 850,
-    },
-    {
-      kind: "agent",
-      speaker: "chaff (audio)",
-      time: "14:02:06",
-      text: "Yep, order #4821 left the warehouse yesterday and is scheduled for...",
-      delayMs: 450,
-      typingMs: 750,
-    },
-    {
-      kind: "meta",
-      text: "barge-in · flushed outgoing audio",
-      delayMs: 1100,
-    },
-    {
-      kind: "human",
-      speaker: "Caller",
-      time: "14:02:09",
-      text: "Actually change the drop-off note to leave it by the side gate.",
-      delayMs: 900,
-    },
-    {
-      kind: "meta",
-      text: "tool_call orders/update_note",
-      delayMs: 750,
-    },
-    {
-      kind: "agent",
-      speaker: "chaff (audio)",
-      time: "14:02:11",
-      text: "Done, updated the delivery note to side gate.",
-      delayMs: 400,
-      typingMs: 700,
-    },
-  ],
-};
+const demoScript = [
+  {
+    kind: "human",
+    speaker: "Maya",
+    time: "09:14",
+    text: "Running 10 mins late, grabbing coffee on the way.",
+    delayMs: 300,
+  },
+  {
+    kind: "human",
+    speaker: "Dan",
+    time: "09:15",
+    text: "No rush, grab me an iced americano if you can.",
+    delayMs: 1100,
+  },
+  {
+    kind: "reaction",
+    emoji: "☕",
+    by: "Maya",
+    delayMs: 550,
+  },
+  {
+    kind: "meta",
+    text: "do_nothing · stayed silent",
+    delayMs: 700,
+  },
+  {
+    kind: "meta",
+    text: "34 min gap · prior segment compacted",
+    delayMs: 1100,
+  },
+  {
+    kind: "human",
+    speaker: "Dan",
+    time: "09:49",
+    text: "@bot check if Thursday 14:00 works for both of us and send the invite.",
+    delayMs: 1200,
+  },
+  {
+    kind: "meta",
+    text: "thinking=HIGH · loaded skill: calendar (1/14)",
+    delayMs: 700,
+  },
+  {
+    kind: "agent",
+    speaker: "chaff",
+    time: "09:49",
+    text: "Maya has a conflict until 14:30. Moved it to 14:30 and sent invites.",
+    delayMs: 450,
+    typingMs: 850,
+  },
+  {
+    kind: "reaction",
+    emoji: "👍",
+    by: "Dan",
+    delayMs: 650,
+  },
+  {
+    kind: "reaction",
+    emoji: "🙌",
+    by: "Maya",
+    delayMs: 450,
+  },
+];
 
 const snippets = {
   im: `import {
@@ -174,7 +143,6 @@ const copyInstallBtn = document.getElementById("copy-install");
 const installStatus = document.getElementById("install-status");
 const copySnippetBtn = document.getElementById("copy-snippet");
 
-let mode = "im";
 let snippet = "im";
 let runId = 0;
 
@@ -206,6 +174,8 @@ const makeStepEl = (step) => {
 
   const isAgent = step.kind === "agent";
   row.className = `msg-row ${isAgent ? "is-right" : "is-left"}`;
+  const wrap = document.createElement("div");
+  wrap.className = "bubble-wrap";
   const bubble = document.createElement("div");
   bubble.className = `bubble ${isAgent ? "bubble-agent" : "bubble-human"}`;
   bubble.innerHTML = `
@@ -215,23 +185,43 @@ const makeStepEl = (step) => {
     </div>
     <div>${step.text}</div>
   `;
-  row.appendChild(bubble);
+  wrap.appendChild(bubble);
+  row.appendChild(wrap);
   return row;
+};
+
+const appendReaction = (targetWrap, emoji, by) => {
+  if (!targetWrap) return;
+  let bar = targetWrap.querySelector(".reaction-row");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.className = "reaction-row";
+    targetWrap.appendChild(bar);
+  }
+  const chip = document.createElement("span");
+  chip.className = "reaction-chip";
+  chip.innerHTML = `<span>${emoji}</span><span class="reaction-who">${by}</span>`;
+  bar.appendChild(chip);
 };
 
 const scrollBottom = () => {
   demoBody.scrollTo({ top: demoBody.scrollHeight, behavior: "smooth" });
 };
 
-const playTrace = async (targetMode) => {
-  mode = targetMode;
+const playTrace = async () => {
   const myRun = ++runId;
-  const steps = scripts[targetMode];
   demoBody.innerHTML = "";
+  let lastBubbleWrap = null;
 
-  for (const step of steps) {
+  for (const step of demoScript) {
     await wait(step.delayMs);
     if (runId !== myRun) return;
+
+    if (step.kind === "reaction") {
+      appendReaction(lastBubbleWrap, step.emoji, step.by);
+      scrollBottom();
+      continue;
+    }
 
     if (step.typingMs) {
       const typingEl = makeTypingEl();
@@ -242,27 +232,18 @@ const playTrace = async (targetMode) => {
       typingEl.remove();
     }
 
-    demoBody.appendChild(makeStepEl(step));
+    const row = makeStepEl(step);
+    demoBody.appendChild(row);
+    const wrap = row.querySelector(".bubble-wrap");
+    if (wrap) lastBubbleWrap = wrap;
     scrollBottom();
   }
 
   await wait(5500);
-  if (runId === myRun) playTrace(targetMode);
+  if (runId === myRun) playTrace();
 };
 
-document.querySelectorAll(".demo-tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".demo-tab").forEach((other) => {
-      other.classList.remove("is-active");
-      other.setAttribute("aria-selected", "false");
-    });
-    btn.classList.add("is-active");
-    btn.setAttribute("aria-selected", "true");
-    playTrace(btn.dataset.mode);
-  });
-});
-
-replayBtn.addEventListener("click", () => playTrace(mode));
+replayBtn.addEventListener("click", () => playTrace());
 
 const setSnippet = (name) => {
   snippet = name;
@@ -304,4 +285,4 @@ copySnippetBtn.addEventListener("click", async () => {
 });
 
 setSnippet("im");
-playTrace("im");
+playTrace();
