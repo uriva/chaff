@@ -250,7 +250,7 @@ a {
 
 .demo-body {
   padding: 18px;
-  min-height: 490px;
+  min-height: 670px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -381,6 +381,13 @@ a {
   border-radius: 999px;
   padding: 4px 11px;
   text-align: center;
+}
+
+.chat-notice {
+  font-size: 11.5px;
+  color: #a3a3a3;
+  text-align: center;
+  padding: 1px 0;
 }
 
 .typing-bubble {
@@ -652,6 +659,6 @@ a {
   }
 
   .demo-body {
-    min-height: 460px;
+    min-height: 640px;
   }
 }

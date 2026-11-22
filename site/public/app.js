@@ -1,10 +1,44 @@
 const demoScript = [
   {
+    kind: "notice",
+    text: "Maya joined the chat",
+    delayMs: 200,
+  },
+  {
+    kind: "notice",
+    text: "Dan joined the chat",
+    delayMs: 280,
+  },
+  {
+    kind: "notice",
+    text: "@bot joined the chat",
+    delayMs: 280,
+  },
+  {
+    kind: "meta",
+    text: "external_event: join · thinking=LOW",
+    delayMs: 500,
+  },
+  {
+    kind: "agent",
+    speaker: "chaff",
+    time: "09:12",
+    text: "Hey Maya and Dan, tag me whenever you need a hand.",
+    delayMs: 350,
+    typingMs: 650,
+  },
+  {
+    kind: "reaction",
+    emoji: "👋",
+    by: "Maya",
+    delayMs: 550,
+  },
+  {
     kind: "human",
     speaker: "Maya",
     time: "09:14",
     text: "Running 10 mins late, grabbing coffee on the way.",
-    delayMs: 300,
+    delayMs: 950,
   },
   {
     kind: "human",
@@ -181,6 +215,14 @@ const makeTypingEl = () => {
 
 const makeStepEl = (step) => {
   const row = document.createElement("div");
+  if (step.kind === "notice") {
+    row.className = "msg-row is-center";
+    const notice = document.createElement("div");
+    notice.className = "chat-notice";
+    notice.textContent = step.text;
+    row.appendChild(notice);
+    return row;
+  }
   if (step.kind === "meta") {
     row.className = "msg-row is-center";
     const pill = document.createElement("div");
