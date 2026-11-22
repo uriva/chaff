@@ -33,7 +33,6 @@
           <span>chaff</span>
         </a>
         <nav class="nav">
-          <a href="#benchmarks">Benchmarks</a>
           <a href="#code">Code</a>
           <a href="https://www.npmjs.com/package/@uriv/chaff" target="_blank" rel="noopener noreferrer">npm</a>
           <a href="https://github.com/uriva/chaff" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -185,70 +184,6 @@
               </div>
             </div>
           </details>
-        </section>
-
-        <section class="section" id="benchmarks">
-          <div class="section-head">
-            <h2>Same model, less chaff</h2>
-            <span class="mono muted">gemini-3.8-flash</span>
-          </div>
-          <p class="section-note">
-            Head-to-head on identical tasks where both harnesses passed. Holding the model constant isolates the
-            harness tax.
-          </p>
-          <div class="table-card">
-            <table class="bench-table">
-              <thead>
-                <tr>
-                  <th>Benchmark</th>
-                  <th>chaff</th>
-                  <th>Baseline</th>
-                  <th>Delta</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>ClawBench <span class="muted">output tok vs. Pi</span></td>
-                  <td class="mono"><strong>944</strong></td>
-                  <td class="mono muted">8,711</td>
-                  <td class="mono">-89.2%</td>
-                </tr>
-                <tr>
-                  <td>ClawBench <span class="muted">total tok vs. Pi</span></td>
-                  <td class="mono"><strong>120.9k</strong></td>
-                  <td class="mono muted">248.8k</td>
-                  <td class="mono">-51.4%</td>
-                </tr>
-                <tr>
-                  <td>Turn-1 startup <span class="muted">vs. Pi</span></td>
-                  <td class="mono"><strong>~800</strong></td>
-                  <td class="mono muted">4,239</td>
-                  <td class="mono">-81.1%</td>
-                </tr>
-                <tr>
-                  <td>&tau;-bench Retail <span class="muted">output tok vs. LLMAgent</span></td>
-                  <td class="mono"><strong>1,137</strong></td>
-                  <td class="mono muted">3,406</td>
-                  <td class="mono">-66.6%</td>
-                </tr>
-                <tr>
-                  <td>&tau;-bench Retail <span class="muted">prompt cache hit</span></td>
-                  <td class="mono"><strong>55.2%</strong></td>
-                  <td class="mono muted">0%</td>
-                  <td class="mono">+55.2pp</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="link-row">
-            <a
-              href="https://prompt2bot.com/blog/the-harness-tax-benchmarking-agents-on-the-same-model"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Read the benchmark writeup &#8599;
-            </a>
-          </p>
         </section>
 
         <section class="section" id="code">

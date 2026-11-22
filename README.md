@@ -9,7 +9,7 @@ heavy _harness tax_ in startup tokens, output verbosity, and config boilerplate.
 WhatsApp, Telegram, group threads, and live voice calls, with zero config knobs
 to babysit.
 
-Website & benchmarks: **[chaff.uriv.me](https://chaff.uriv.me)**
+Website: **[chaff.uriv.me](https://chaff.uriv.me)**
 
 ## Why chaff
 
@@ -28,17 +28,6 @@ Website & benchmarks: **[chaff.uriv.me](https://chaff.uriv.me)**
   per-turn thinking-level routing, three-tier compaction (in-memory tool-result
   folding, scratchpad spills, settled-session rollups), deterministic cache
   prefixes, and zero-cost-on-happy-path reliability guards.
-
-## Benchmarks (same model: `gemini-3.8-flash`)
-
-| Benchmark                                     | Metric                | chaff  | Baseline | Delta       |
-| --------------------------------------------- | --------------------- | ------ | -------- | ----------- |
-| ClawBench `t2-config-loader` vs. Pi           | Output tokens         | 944    | 8,711    | **-89.2%**  |
-| ClawBench `t2-config-loader` vs. Pi           | Total tokens          | 120.9k | 248.8k   | **-51.4%**  |
-| ClawBench `t2-config-loader` vs. Pi           | LLM calls             | 16     | 36       | **-55.5%**  |
-| Turn-1 startup tax vs. Pi                     | Initial tokens        | ~800   | 4,239    | **-81.1%**  |
-| τ-bench Retail (5/5) vs. reference `LLMAgent` | Output tokens         | 1,137  | 3,406    | **-66.6%**  |
-| τ-bench Retail (5/5) vs. reference `LLMAgent` | Prompt cache hit rate | 55.2%  | 0%       | **+55.2pp** |
 
 ## Install
 
