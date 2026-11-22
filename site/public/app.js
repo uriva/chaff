@@ -21,7 +21,7 @@ const demoScript = [
   },
   {
     kind: "agent",
-    speaker: "chaff",
+    speaker: "bot",
     time: "09:12",
     text: "Hey Maya and Dan, tag me whenever you need a hand.",
     delayMs: 350,
@@ -77,7 +77,7 @@ const demoScript = [
   },
   {
     kind: "agent",
-    speaker: "chaff",
+    speaker: "bot",
     time: "09:49",
     text: "Maya has a conflict until 14:30. Moved it to 14:30 and sent invites.",
     delayMs: 450,
