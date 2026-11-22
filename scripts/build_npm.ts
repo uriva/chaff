@@ -50,6 +50,7 @@ await build({
   },
   postBuild: () => {
     Deno.copyFileSync("README.md", `${outDir}/README.md`);
+    Deno.copyFileSync("LICENSE", `${outDir}/LICENSE`);
     const pkgPath = `${outDir}/package.json`;
     const pkg = JSON.parse(Deno.readTextFileSync(pkgPath));
     pkg.types = "./esm/mod.d.ts";
