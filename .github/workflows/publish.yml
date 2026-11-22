@@ -23,16 +23,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Check if version is already on npm
         id: check
         run: |
           VERSION=$(jq -r .version deno.json)
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          if npm view "chaff@${VERSION}" version >/dev/null 2>&1; then
+          if npm view "@uriv/chaff@${VERSION}" version >/dev/null 2>&1; then
             echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "chaff@${VERSION} is already published on npm."
+            echo "@uriv/chaff@${VERSION} is already published on npm."
           else
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
@@ -44,4 +43,4 @@ jobs:
       - name: Publish to npm via Trusted Publishing (OIDC)
         if: steps.check.outputs.published == 'false'
         working-directory: npm
-        run: npm publish --provenance --access public
+        run: npm publish --access public

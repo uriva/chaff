@@ -17,7 +17,7 @@ await build({
     target: "Latest",
   },
   package: {
-    name: "chaff",
+    name: "@uriv/chaff",
     version: denoJson.version,
     description:
       "Multi-party, time-aware AI agent harness for IM and real-time voice. Economical, dynamic, zero knobs.",

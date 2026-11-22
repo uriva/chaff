@@ -43,11 +43,11 @@ Website & benchmarks: **[chaff.uriv.me](https://chaff.uriv.me)**
 ## Install
 
 ```bash
-npm install chaff
+npm install @uriv/chaff
 ```
 
 Works in Node (>= 20), Bun, Cloudflare Workers (`nodejs_compat`), and Deno
-(`npm:chaff`).
+(`npm:@uriv/chaff`).
 
 ## Running an agent
 
@@ -60,7 +60,7 @@ import {
   runAgent,
   tool,
   z,
-} from "chaff";
+} from "@uriv/chaff";
 
 const history = [
   participantUtteranceTurn({
@@ -99,7 +99,7 @@ await injectGeminiToken(process.env.GEMINI_API_KEY!)(
 Run the same agent over full-duplex audio via Gemini Live:
 
 ```ts
-import { createDuplexPair, runAgent } from "chaff";
+import { createDuplexPair, runAgent } from "@uriv/chaff";
 
 const [agentSide, callerSide] = createDuplexPair();
 
@@ -120,7 +120,7 @@ await runAgent({
 ## Structured JSON output
 
 ```ts
-import { genJson, injectGeminiToken, z } from "chaff";
+import { genJson, injectGeminiToken, z } from "@uriv/chaff";
 
 const extract = genJson(
   { provider: "google", tier: "flash" },

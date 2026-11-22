@@ -106,7 +106,7 @@ const snippets = {
   runAgent,
   tool,
   z,
-} from "chaff";
+} from "@uriv/chaff";
 
 const history = [
   participantUtteranceTurn({
@@ -150,7 +150,7 @@ await injectGeminiToken(process.env.GEMINI_API_KEY!)(
   createDuplexPair,
   injectGeminiToken,
   runAgent,
-} from "chaff";
+} from "@uriv/chaff";
 
 const [agentSide, callerSide] = createDuplexPair();
 
@@ -170,7 +170,7 @@ await injectGeminiToken(process.env.GEMINI_API_KEY!)(
     });
   },
 )();`,
-  json: `import { genJson, injectGeminiToken, z } from "chaff";
+  json: `import { genJson, injectGeminiToken, z } from "@uriv/chaff";
 
 const extractContact = genJson(
   { provider: "google", tier: "flash" },
@@ -353,7 +353,7 @@ document.querySelectorAll(".code-tab").forEach((btn) => {
 
 copyInstallBtn.addEventListener("click", async () => {
   try {
-    await navigator.clipboard.writeText("npm install chaff");
+    await navigator.clipboard.writeText("npm install @uriv/chaff");
     installStatus.textContent = "copied";
     setTimeout(() => {
       installStatus.textContent = "copy";
