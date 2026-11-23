@@ -1,8 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
+import { pipe } from "gamla";
+import { runAgent } from "../mod.ts";
 import {
   externalEventPrefix,
   externalEventTurn,
   type HistoryEvent,
+  injectCallModel,
   ownUtteranceTurn,
   sanitizeModelOutput,
 } from "../src/agent.ts";
@@ -83,4 +86,66 @@ runForAllProviders(
   },
   3,
   false,
+);
+
+Deno.test(
+  "runAgent loops to process external_events that arrive while callModel is in flight and reports pre-model input history",
+  async () => {
+    const ext1 = externalEventTurn("Webhook alert #1");
+    const ext2 = externalEventTurn("Webhook alert #2");
+    const ext3 = externalEventTurn("Webhook alert #3");
+    const ext4 = externalEventTurn("Webhook alert #4");
+    const mockHistory: HistoryEvent[] = [ext1, ext2];
+    const emittedWithModelTail: Array<{ text: string; tailId?: string }> = [];
+    const modelInputTailState: { id?: string } = {};
+    const callCounter = { count: 0 };
+
+    await pipe(
+      agentDeps(mockHistory),
+      injectCallModel((events) => {
+        callCounter.count++;
+        if (callCounter.count === 1) {
+          mockHistory.push(ext3, ext4);
+          return Promise.resolve([ownUtteranceTurn("Posted alerts 1 and 2")]);
+        }
+        const sawExt3 = events.some((e) => e.id === ext3.id);
+        const sawExt4 = events.some((e) => e.id === ext4.id);
+        assert(sawExt3 && sawExt4, "Second turn must see alerts 3 and 4");
+        return Promise.resolve([ownUtteranceTurn("Posted alerts 3 and 4")]);
+      }),
+    )(runAgent)({
+      maxIterations: 5,
+      tools: [],
+      prompt: "Relay incoming webhook alerts.",
+      timezoneIANA: "UTC",
+      onModelInputHistory: (inputHistory) => {
+        modelInputTailState.id = inputHistory[inputHistory.length - 1]?.id;
+      },
+      onOutputEvent: (event) => {
+        mockHistory.push(event);
+        if (event.type === "own_utterance") {
+          emittedWithModelTail.push({
+            text: event.text,
+            tailId: modelInputTailState.id,
+          });
+        }
+        return Promise.resolve();
+      },
+    });
+
+    assertEquals(
+      callCounter.count,
+      2,
+      "Expected a follow-up model turn for external_events that arrived mid-call",
+    );
+    assertEquals(emittedWithModelTail.map((e) => e.text), [
+      "Posted alerts 1 and 2",
+      "Posted alerts 3 and 4",
+    ]);
+    assertEquals(
+      emittedWithModelTail[0].tailId,
+      ext2.id,
+      "First utterance must record the pre-model history tail (ext2), not ext4",
+    );
+  },
 );
