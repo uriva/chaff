@@ -4057,14 +4057,6 @@ const emitOutputEvents = (events: HistoryEvent[]) => {
   ]).then(() => {});
 };
 
-const hasUnseenExternalEvent = (
-  seenIds: ReadonlySet<string>,
-  updatedHistory: HistoryEvent[],
-) =>
-  updatedHistory.some(
-    (event) => event.type === "external_event" && !seenIds.has(event.id),
-  );
-
 export const runAbstractAgent = (
   spec: AgentSpec,
   callModel: (history: HistoryEvent[]) => Promise<HistoryEvent[]>,
@@ -4153,7 +4145,6 @@ export const runAbstractAgent = (
         triggerBackgroundDecisions();
       }
       const history = await getHistory();
-      const modelInputIds = new Set(history.map(({ id }) => id));
       spec.onModelInputHistory?.([...history]);
       let normalizedHistory = await projectModelContext(
         spec,
@@ -4355,8 +4346,7 @@ export const runAbstractAgent = (
           last(updatedHistory).isOwn &&
           !emitWithUniqueIds.every((ev: HistoryEvent) =>
             ev.type === "own_thought"
-          ) &&
-          !hasUnseenExternalEvent(modelInputIds, updatedHistory)
+          )
         ) {
           turnEnded = true;
           const toEmit = pendingToUnlearn;
