@@ -186,10 +186,54 @@ const isImageProcessingOrInternalError = (error: Error) =>
   error.message.includes("Internal error encountered") ||
   isInvalidArgumentError(error);
 
+const hasNumericStatus = (e: unknown): e is { status: number } =>
+  typeof e === "object" && e !== null && "status" in e &&
+  typeof e.status === "number";
+
+const is404NotFoundError = (error: Error) =>
+  (hasNumericStatus(error) && error.status === 404) ||
+  (error.message.includes("404") && error.message.includes("NOT_FOUND"));
+
+const isUnreachableMediaUrlError = (error: Error) =>
+  error.message.includes("Cannot fetch content from the provided URL") ||
+  error.message.includes("Unable to retrieve") ||
+  error.message.includes("Failed to fetch");
+
+const hasAnyFileAttachment = (events: GeminiHistoryEvent[]) =>
+  events.some((e) =>
+    "attachments" in e &&
+    (e.attachments ?? []).some((att) => att.kind === "file")
+  );
+
+const isExpiredOrMissingMediaError = (
+  error: Error,
+  events: GeminiHistoryEvent[],
+) =>
+  is403PermissionError(error) ||
+  isUnreachableMediaUrlError(error) ||
+  (is404NotFoundError(error) && hasAnyFileAttachment(events));
+
+const extractReferencedFileUriFromError = (
+  error: Error,
+  events: GeminiHistoryEvent[],
+): string | null => {
+  const uris = events.flatMap((e) =>
+    "attachments" in e
+      ? (e.attachments ?? [])
+        .filter((att): att is Extract<MediaAttachment, { kind: "file" }> =>
+          att.kind === "file" && Boolean(att.fileUri)
+        )
+        .map((att) => att.fileUri)
+      : []
+  );
+  return uris.find((uri) => error.message.includes(uri)) ?? null;
+};
+
 const isRecoverableError = (error: Error) =>
   isFileNotActiveError(error) ||
   isUnsupportedMimeTypeError(error) ||
   isImageProcessingOrInternalError(error) ||
+  isUnreachableMediaUrlError(error) ||
   is403PermissionError(error) ||
   isTokenLimitExceeded(error);
 
@@ -234,18 +278,19 @@ export const stripExpiredFile = (
   error: Error,
   events: GeminiHistoryEvent[],
 ) => {
-  const fileId = extractFileIdFromError(error);
-  if (!fileId) return undefined;
-  const matchesFile = hasFileAttachment(fileId);
+  const fileRef = extractFileIdFromError(error) ??
+    extractReferencedFileUriFromError(error, events);
+  if (!fileRef) return undefined;
+  const matchesFile = hasFileAttachment(fileRef);
   const replacements = pipe(
     filter((event): event is EventWithAttachments => matchesFile(event)),
     map((event): [string, GeminiHistoryEvent] => {
       const placeholder = getExpiredMediaText(
         event.attachments?.filter((att: MediaAttachment) =>
-          att.kind === "file" && att.fileUri.includes(fileId)
+          att.kind === "file" && att.fileUri.includes(fileRef)
         ) ?? [],
       );
-      return [event.id, stripFileFromEvent(fileId, placeholder)(event)];
+      return [event.id, stripFileFromEvent(fileRef, placeholder)(event)];
     }),
     Object.fromEntries<GeminiHistoryEvent>,
   )(events);
@@ -1641,12 +1686,39 @@ export const stripAllExpiredFiles = async (
   let currentError = initialError;
   for (let attempt = 0; attempt < 20; attempt++) {
     const fixed = stripExpiredFile(currentError, currentEvents);
-    if (!fixed) throw currentError;
-    if (empty(Object.keys(fixed.replacements))) {
+    if (!fixed || empty(Object.keys(fixed.replacements))) {
+      const keepNewestId = newestMediaEventId(currentEvents);
+      if (keepNewestId) {
+        const olderStripped = stripMediaAttachmentsWithPlaceholder(
+          getExpiredMediaText,
+          keepNewestId,
+        )(currentEvents);
+        if (nonempty(Object.keys(olderStripped.replacements))) {
+          console.warn(
+            "Stripping older media attachments while preserving newest media event due to expired/missing file error:",
+            currentError.message,
+          );
+          try {
+            return await callGemini(
+              eventsToRequest(olderStripped.updatedHistory),
+              disableStreaming,
+            );
+          } catch (retryError) {
+            const err = normalizeError(retryError);
+            if (
+              !isExpiredOrMissingMediaError(err, olderStripped.updatedHistory)
+            ) {
+              throw err;
+            }
+            currentEvents = olderStripped.updatedHistory;
+          }
+        }
+      }
       console.warn(
-        `Could not find file referenced in 403 error in any attachment. Stripping all file attachments as fallback.`,
+        `Could not isolate expired file from error. Stripping all file attachments as fallback.`,
       );
       const nuclear = stripAllFileAttachments(currentEvents);
+      if (empty(Object.keys(nuclear.replacements))) throw currentError;
       currentEvents = nuclear.updatedHistory;
       try {
         return await callGemini(
@@ -1656,7 +1728,7 @@ export const stripAllExpiredFiles = async (
       } catch (nuclearError) {
         const err = normalizeError(nuclearError);
         throw new Error(
-          `403 persists after stripping all file attachments: ${err.message}`,
+          `Expired media error persists after stripping all file attachments: ${err.message}`,
         );
       }
     }
@@ -1668,7 +1740,12 @@ export const stripAllExpiredFiles = async (
       );
     } catch (error) {
       const err = normalizeError(error);
-      if (!isFileNotActiveError(err)) throw err;
+      if (
+        !isFileNotActiveError(err) &&
+        !isExpiredOrMissingMediaError(err, currentEvents)
+      ) {
+        throw err;
+      }
       currentError = err;
     }
   }
@@ -1762,7 +1839,7 @@ async (events: GeminiHistoryEvent[]): Promise<GeminiOutput> => {
           disableStreaming,
         );
       }
-      if (!is403PermissionError(err)) throw err;
+      if (!isExpiredOrMissingMediaError(err, events)) throw err;
       return stripAllExpiredFiles(
         err,
         events,
