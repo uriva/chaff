@@ -500,3 +500,125 @@ Deno.test("search_past_history omits internal bookkeeping tools and ranks/filter
   assert(!result.includes(cleanActiveMemoryToolName));
   assert(!result.includes(searchPastHistoryToolName));
 });
+
+Deno.test("search_past_history does not self-match the planning thought emitted alongside the search call", async () => {
+  const baseTime = 1788600000000;
+  const history: HistoryEvent[] = [
+    {
+      ...participantUtteranceTurn({
+        name: "Alice",
+        text: "Did we ever share a demo-video link earlier?",
+      }),
+      timestamp: baseTime,
+    },
+    {
+      id: "thought-substantive",
+      type: "own_thought",
+      isOwn: true,
+      text:
+        "Substantive prior turn thought: noted invoice INV-404 while answering Alice.",
+      timestamp: baseTime + 1000,
+      modelMetadata: { type: "gemini", responseId: "resp-substantive" },
+    },
+    {
+      id: "utt-substantive",
+      type: "own_utterance",
+      isOwn: true,
+      text: "I noted invoice INV-404.",
+      timestamp: baseTime + 1000,
+      modelMetadata: { type: "gemini", responseId: "resp-substantive" },
+    },
+  ];
+
+  let step = 0;
+  const fakeCallModel = (): Promise<HistoryEvent[]> => {
+    step += 1;
+    if (step === 1) {
+      return Promise.resolve([
+        {
+          id: "call-search-video",
+          type: "tool_call",
+          isOwn: true,
+          name: searchPastHistoryToolName,
+          parameters: { query: "demo-video.example" },
+          timestamp: baseTime + 5000,
+          modelMetadata: { type: "gemini", responseId: "resp-search-1" },
+        },
+        {
+          id: "thought-search-video",
+          type: "own_thought",
+          isOwn: true,
+          text:
+            "I should search past history for demo-video.example to see if a link was shared.",
+          timestamp: baseTime + 5000,
+          modelMetadata: { type: "gemini", responseId: "resp-search-1" },
+        },
+      ]);
+    }
+    if (step === 2) {
+      return Promise.resolve([
+        {
+          id: "call-search-inv",
+          type: "tool_call",
+          isOwn: true,
+          name: searchPastHistoryToolName,
+          parameters: { query: "INV-404" },
+          timestamp: baseTime + 6000,
+          modelMetadata: { type: "gemini", responseId: "resp-search-2" },
+        },
+        {
+          id: "thought-search-inv",
+          type: "own_thought",
+          isOwn: true,
+          text: "Checking history for INV-404.",
+          timestamp: baseTime + 6000,
+          modelMetadata: { type: "gemini", responseId: "resp-search-2" },
+        },
+      ]);
+    }
+    return Promise.resolve([
+      {
+        ...ownUtteranceTurn("Done checking history."),
+        timestamp: baseTime + 7000,
+      },
+    ]);
+  };
+
+  await injectCallModel(fakeCallModel)(async () => {
+    await agentDeps(history)(runAgent)({
+      provider: "google",
+      maxIterations: 5,
+      tools: [],
+      prompt: "You are a helpful assistant.",
+      timezoneIANA: "UTC",
+    });
+  })();
+
+  const videoResult = history.find(
+    (e): e is Extract<HistoryEvent, { type: "tool_result" }> =>
+      e.type === "tool_result" && e.toolCallId === "call-search-video",
+  );
+  assert(videoResult, "Expected tool_result for call-search-video");
+  assertEquals(
+    videoResult.result,
+    "No past conversation events matched your search criteria.",
+  );
+
+  const invResult = history.find(
+    (e): e is Extract<HistoryEvent, { type: "tool_result" }> =>
+      e.type === "tool_result" && e.toolCallId === "call-search-inv",
+  );
+  assert(invResult, "Expected tool_result for call-search-inv");
+  assert(
+    typeof invResult.result === "string" &&
+      invResult.result.includes(
+        "Substantive prior turn thought: noted invoice INV-404",
+      ),
+    `Expected substantive thought to remain searchable, got: ${invResult.result}`,
+  );
+  assert(
+    typeof invResult.result === "string" &&
+      !invResult.result.includes("Checking history for INV-404"),
+    `Expected search-planning thought to be excluded, got: ${invResult.result}`,
+  );
+});

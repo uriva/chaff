@@ -20,18 +20,67 @@ const eventEndTimestamp = (e: HistoryEvent): number =>
     ? summaryIdEndTimestamp(e.id) ?? e.timestamp
     : e.timestamp;
 
+const eventResponseId = (e: HistoryEvent): string | undefined =>
+  "modelMetadata" in e &&
+    e.modelMetadata &&
+    typeof e.modelMetadata === "object" &&
+    "responseId" in e.modelMetadata &&
+    typeof e.modelMetadata.responseId === "string"
+    ? e.modelMetadata.responseId
+    : undefined;
+
+const isBookkeepingToolCall = (e: HistoryEvent) =>
+  e.type === "tool_call" && internalBookkeepingToolNames.has(e.name);
+
+const isSubstantiveModelEvent = (e: HistoryEvent) =>
+  e.type === "own_utterance" ||
+  (e.type === "tool_call" && !internalBookkeepingToolNames.has(e.name));
+
+const isBookkeepingOnlyThought = (
+  pureBookkeepingResponseIds: Set<string>,
+  pureBookkeepingTimestamps: Set<number>,
+) =>
+(e: HistoryEvent): boolean => {
+  if (e.type !== "own_thought") return false;
+  const respId = eventResponseId(e);
+  if (respId !== undefined) return pureBookkeepingResponseIds.has(respId);
+  return summaryIdEndTimestamp(e.id) === undefined &&
+    pureBookkeepingTimestamps.has(e.timestamp);
+};
+
 const filterBookkeepingEvents = (history: HistoryEvent[]): HistoryEvent[] => {
-  const bookkeepingCallIds = new Set(
-    history
-      .filter((e) =>
-        e.type === "tool_call" && internalBookkeepingToolNames.has(e.name)
-      )
-      .map((e) => e.id),
+  const bookkeepingCalls = history.filter(isBookkeepingToolCall);
+  const bookkeepingCallIds = new Set(bookkeepingCalls.map((e) => e.id));
+  const substantiveEvents = history.filter(isSubstantiveModelEvent);
+  const substantiveResponseIds = new Set(
+    substantiveEvents.map(eventResponseId).filter((id): id is string =>
+      id !== undefined
+    ),
+  );
+  const pureBookkeepingResponseIds = new Set(
+    bookkeepingCalls
+      .map(eventResponseId)
+      .filter((id): id is string =>
+        id !== undefined && !substantiveResponseIds.has(id)
+      ),
+  );
+  const substantiveTimestamps = new Set(
+    substantiveEvents
+      .filter((e) => eventResponseId(e) === undefined)
+      .map((e) => e.timestamp),
+  );
+  const pureBookkeepingTimestamps = new Set(
+    bookkeepingCalls
+      .filter((e) => eventResponseId(e) === undefined)
+      .map((e) => e.timestamp)
+      .filter((ts) => !substantiveTimestamps.has(ts)),
+  );
+  const isSkippedThought = isBookkeepingOnlyThought(
+    pureBookkeepingResponseIds,
+    pureBookkeepingTimestamps,
   );
   return history.filter((e) => {
-    if (e.type === "tool_call" && internalBookkeepingToolNames.has(e.name)) {
-      return false;
-    }
+    if (isBookkeepingToolCall(e)) return false;
     if (
       e.type === "tool_result" &&
       e.toolCallId !== undefined &&
@@ -39,6 +88,7 @@ const filterBookkeepingEvents = (history: HistoryEvent[]): HistoryEvent[] => {
     ) {
       return false;
     }
+    if (isSkippedThought(e)) return false;
     return true;
   });
 };
