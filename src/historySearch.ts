@@ -109,6 +109,7 @@ export const searchPastHistoryParameters = z.object({
     "tool_call",
     "tool_result",
     "own_thought",
+    "external_event",
   ])).optional().describe(
     "Optional list of event types to include. If omitted, all types are included. Note: platform notifications, injected context, and PROACTIVE TASK prompts (including folded '[Earlier platform notification ...]' entries) are stored as 'own_thought', NOT 'participant_utterance'.",
   ),
@@ -121,10 +122,16 @@ export const searchPastHistoryParameters = z.object({
   offset: z.number().int().nonnegative().optional().default(0).describe(
     "Pagination offset for matching events (default: 0).",
   ),
+  full: z.boolean().optional().default(false).describe(
+    "If true, return full untruncated event bodies instead of 1000-char snippets (large outputs automatically spill to the scratchpad for read_scratch_file). Single-event results always return full text.",
+  ),
 });
 
 const maxEventTextDisplayChars = 1000;
 const maxAllowedLimit = 50;
+
+const truncationNotice = (totalChars: number): string =>
+  `... [truncated, ${totalChars} chars total — call ${searchPastHistoryToolName} with full=true (or limit=1 + offset) to read complete text]`;
 
 const eventToSearchableText = (e: HistoryEvent): string => {
   if (e.type === "participant_utterance" || e.type === "own_utterance") {
@@ -147,18 +154,22 @@ const eventToSearchableText = (e: HistoryEvent): string => {
   return "";
 };
 
-const extractRelevantSnippet = (text: string, re?: RegExp): string => {
-  if (text.length <= maxEventTextDisplayChars) return text;
+const extractRelevantSnippet = (
+  text: string,
+  re?: RegExp,
+  includeFull = false,
+): string => {
+  if (includeFull || text.length <= maxEventTextDisplayChars) return text;
   if (!re) {
-    return `${
-      text.slice(0, maxEventTextDisplayChars)
-    }... [truncated, ${text.length} chars total]`;
+    return `${text.slice(0, maxEventTextDisplayChars)}${
+      truncationNotice(text.length)
+    }`;
   }
   const m = re.exec(text);
   if (!m) {
-    return `${
-      text.slice(0, maxEventTextDisplayChars)
-    }... [truncated, ${text.length} chars total]`;
+    return `${text.slice(0, maxEventTextDisplayChars)}${
+      truncationNotice(text.length)
+    }`;
   }
   const matchIdx = m.index;
   const start = Math.max(
@@ -167,13 +178,15 @@ const extractRelevantSnippet = (text: string, re?: RegExp): string => {
   );
   const end = Math.min(text.length, start + maxEventTextDisplayChars);
   const prefix = start > 0 ? "..." : "";
-  const suffix = end < text.length
-    ? `... [truncated, ${text.length} chars total]`
-    : "";
+  const suffix = end < text.length ? truncationNotice(text.length) : "";
   return `${prefix}${text.slice(start, end)}${suffix}`;
 };
 
-const formatEventForDisplay = (e: HistoryEvent, re?: RegExp): string => {
+const formatEventForDisplay = (
+  e: HistoryEvent,
+  re?: RegExp,
+  includeFull = false,
+): string => {
   const dateStr = new Date(e.timestamp).toISOString();
   const getPayload = (): { sender: string; rawBody: string } => {
     if (e.type === "participant_utterance") {
@@ -208,7 +221,7 @@ const formatEventForDisplay = (e: HistoryEvent, re?: RegExp): string => {
   };
 
   const { sender, rawBody } = getPayload();
-  const body = extractRelevantSnippet(rawBody, re);
+  const body = extractRelevantSnippet(rawBody, re, includeFull);
   return `[${dateStr}] ${sender}:\n${body}`;
 };
 
@@ -222,10 +235,12 @@ export type SearchPastHistoryArgs = {
     | "tool_call"
     | "tool_result"
     | "own_thought"
+    | "external_event"
   )[];
   order?: "asc" | "desc";
   limit?: number;
   offset?: number;
+  full?: boolean;
 };
 
 export const searchPastHistoryToolRaw = (
@@ -245,6 +260,7 @@ export const searchPastHistoryToolRaw = (
     order = "asc",
     limit = 20,
     offset = 0,
+    full = false,
   }: SearchPastHistoryArgs): Promise<string> => {
     const startMs = start_time ? Date.parse(start_time) : undefined;
     if (start_time && (startMs === undefined || Number.isNaN(startMs))) {
@@ -326,7 +342,9 @@ export const searchPastHistoryToolRaw = (
       return `Offset ${offset} is beyond the total ${sortedMatches.length} matching events.`;
     }
 
-    const formatted = paged.map((e) => formatEventForDisplay(e, compiledRe))
+    const includeFull = full || paged.length === 1;
+    const formatted = paged
+      .map((e) => formatEventForDisplay(e, compiledRe, includeFull))
       .join("\n\n---\n\n");
     const remaining = sortedMatches.length - (offset + paged.length);
     const suffix = remaining > 0

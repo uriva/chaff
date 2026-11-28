@@ -622,3 +622,107 @@ Deno.test("search_past_history does not self-match the planning thought emitted 
     `Expected search-planning thought to be excluded, got: ${invResult.result}`,
   );
 });
+
+Deno.test("search_past_history returns full untruncated payload on full=true or single-event match and spills >20k events to scratchpad", async () => {
+  const baseTime = 1788700000000;
+  const tailMarker = "FINAL_ITEM_50_UUID_99999999-aaaa-4bbb-8ccc-dddddddddddd";
+  const longLines = Array.from(
+    { length: 220 },
+    (_, i) =>
+      `Item ${i + 1}: conversation_id=00000000-0000-4000-8000-${
+        String(i + 1).padStart(12, "0")
+      } status=needs-review details=${"x".repeat(80)}`,
+  );
+  const longPayload = `[external event]: Batch Audit\n${
+    longLines.join("\n")
+  }\n${tailMarker}`;
+  const history: HistoryEvent[] = [
+    {
+      id: "ext-long-0",
+      type: "own_thought",
+      isOwn: true,
+      text: longPayload,
+      timestamp: baseTime,
+    },
+    {
+      ...participantUtteranceTurn({
+        name: "Operator",
+        text: "Please inspect all items.",
+      }),
+      id: "msg-1",
+      timestamp: baseTime + 1000,
+    },
+  ];
+
+  const tool = searchPastHistoryToolRaw(() => Promise.resolve(history));
+  const multiSnippet = await tool.handler({ order: "asc", limit: 10 });
+  assert(
+    multiSnippet.includes("full=true"),
+    `Expected truncation hint mentioning full=true, got: ${multiSnippet}`,
+  );
+
+  const singleFull = await tool.handler({ order: "asc", limit: 1 });
+  assert(
+    singleFull.includes(tailMarker),
+    `Expected single-event result to include full tail marker, got len=${singleFull.length}`,
+  );
+
+  const explicitFull = await tool.handler({
+    order: "asc",
+    limit: 10,
+    full: true,
+  });
+  assert(
+    explicitFull.includes(tailMarker),
+    `Expected full=true result to include full tail marker, got len=${explicitFull.length}`,
+  );
+
+  // Verify through runAgent that >20k output spills cleanly into scratchPad
+  const scratchStore = new Map<string, string>();
+  const scratchPad = {
+    set: (id: string, value: string) => {
+      scratchStore.set(id, value);
+      return Promise.resolve();
+    },
+    get: (id: string) => Promise.resolve(scratchStore.get(id)),
+  };
+  let step = 0;
+  const fakeCallModel = (): Promise<HistoryEvent[]> => {
+    step += 1;
+    if (step === 1) {
+      return Promise.resolve([
+        {
+          id: "call-search-full",
+          type: "tool_call",
+          isOwn: true,
+          name: searchPastHistoryToolName,
+          parameters: { order: "asc", limit: 1, full: true },
+          timestamp: baseTime + 5000,
+        },
+      ]);
+    }
+    return Promise.resolve([
+      {
+        ...ownUtteranceTurn("Recovered full payload."),
+        timestamp: baseTime + 6000,
+      },
+    ]);
+  };
+
+  await injectCallModel(fakeCallModel)(async () => {
+    await agentDeps(history)(runAgent)({
+      provider: "google",
+      maxIterations: 4,
+      tools: [],
+      prompt: "You are a helpful assistant.",
+      timezoneIANA: "UTC",
+      toolOutputScratchPad: scratchPad,
+    });
+  })();
+
+  const spilled = scratchStore.get("call-search-full");
+  assert(
+    typeof spilled === "string" && spilled.includes(tailMarker),
+    `Expected >20k search_past_history result to spill complete payload to scratchpad, got len=${spilled?.length}`,
+  );
+});
